@@ -32,4 +32,4 @@ $ - display score
 
 ! - Start new game
 
-# - End the game
+\# - End the game
