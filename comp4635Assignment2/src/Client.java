@@ -28,6 +28,8 @@ public class Client {
         add,     // add <word>
         remove,  // remove <word>
         check,   // check <word>
+        score,   // check score
+        scoreboard, //view scoreboard
         help,    // help
         quit     // quit
     }
@@ -220,6 +222,28 @@ public class Client {
                 case help:
                     printHelp();
                     break;
+                case score:
+                    // Get the current user's score.
+                    int score = accountServer.getScore(username);
+                    System.out.println("Your current score is: " + score);
+                    break;
+                case scoreboard:
+                	  try {
+                	        // Retrieve the scoreboard map from the account server.
+                	        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard();
+                	        System.out.println("---- Scoreboard ----");
+                	        if (scoreboard.isEmpty()) {
+                	            System.out.println("No scores available.");
+                	        } else {
+                	            for (java.util.Map.Entry<String, Integer> entry : scoreboard.entrySet()) {
+                	                System.out.println(entry.getKey() + " : " + entry.getValue());
+                	            }
+                	        }
+                	        System.out.println("--------------------");
+                	    } catch (RemoteException e) {
+                	        System.out.println("Error retrieving scoreboard: " + e.getMessage());
+                	    }
+                	    break;   
                 case quit:
                     System.out.println("Quitting...");
                     System.exit(0);
@@ -305,6 +329,8 @@ public class Client {
         System.out.println("|   add <word>                                 - Add a new word      |");
         System.out.println("|   remove <word>                              - Remove a word       |");
         System.out.println("|   check <word>                               - Check word existence|");
+        System.out.println("|   score                                      - Get your user score |");
+        System.out.println("|   scoreboard                                 - Get the scoreboard  |");
         System.out.println("|   help                                       - Display this help   |");
         System.out.println("|   quit                                       - Exit the client     |");
         System.out.println(border);

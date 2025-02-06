@@ -210,6 +210,14 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	        session.formattedPuzzle = new String(formattedChars);
 	        if (!session.formattedPuzzle.contains("_")) {
 	            sessions.remove(player);
+	         // After a win, update the score by +1:
+                try {
+                    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+                    UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+                    accountServer.updateScore(player, 1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 	            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
 	        }
 	        return "Current puzzle state:\n" + session.formattedPuzzle +
@@ -267,6 +275,15 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	        if (wordFound) {
 	            if (!session.formattedPuzzle.contains("_")) {
 	                sessions.remove(player);
+	                
+	                // After a win, update the score by +1:
+	                try {
+	                    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+	                    UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+	                    accountServer.updateScore(player, 1);
+	                } catch (Exception e) {
+	                    e.printStackTrace();
+	                }
 	                return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
 	            }
 	            return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +

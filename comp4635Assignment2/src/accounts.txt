@@ -1,0 +1,2 @@
+user1;o;1
+iyan;iyan;0
