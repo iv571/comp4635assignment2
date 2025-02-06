@@ -3,31 +3,45 @@
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class GameServer {
     private static final String USAGE = "java Server <bank_rmi_url>";
     private static final String BANK = "RBC";
     private static final String HOST = "localhost";
+    private static final int REGISTRY_PORT = 1099;
 
     public GameServer(String bankName) {
         try {
-            // Register the newly created object at rmiregistry.
+        	// Create or get the RMI registry
+            Registry registry;
             try {
-                LocateRegistry.getRegistry(1099).list();
+                registry = LocateRegistry.getRegistry(REGISTRY_PORT);
+                registry.list(); // Forces a check if the registry exists
             } catch (RemoteException e) {
-                LocateRegistry.createRegistry(1099);
+                registry = LocateRegistry.createRegistry(REGISTRY_PORT);
             }
             
             
          // --- Automatically start and bind the UserAccountServer ---
             try {
-                // Create an instance of your UserAccountServer implementation.
+            	// Bind UserAccountServer
                 UserAccountImpl accountServer = new UserAccountImpl();
-                // Bind the account server to the registry under the name "UserAccountServer"
-                Naming.rebind("rmi://localhost:1099/UserAccountServer", accountServer);
+                registry.rebind("UserAccountServer", accountServer);
+                System.out.println("UserAccountServer bound.");
                 System.out.println("UserAccountServer is running and bound as 'UserAccountServer'");
             } catch (Exception e) {
                 System.err.println("Failed to start UserAccountServer: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            // --- Automatically start and bind the WordRepositoryServer ---
+            try {
+            	WordRepositoryImpl wordServer = new WordRepositoryImpl();
+                registry.rebind("WordRepositoryServer", wordServer);
+                System.out.println("WordRepositoryServer bound.");
+            } catch (Exception e) {
+                System.err.println("Failed to start WordRepositoryServer: " + e.getMessage());
                 e.printStackTrace();
             }
             

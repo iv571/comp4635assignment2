@@ -13,6 +13,7 @@ public class Client {
     Account account;
     CrissCrossPuzzleServer puzzleServer;
     UserAccountServer accountServer;
+    WordRepositoryServer wordServer;
     private String serverUrl;
     String clientname;
     String username = " ";
@@ -40,6 +41,9 @@ public class Client {
             puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
          // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
+            
+         // Look up the remote user account server (assumed to be at a fixed URL).
+            wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
         } catch (Exception e) {
             System.out.println("The runtime failed: " + e.getMessage());
             System.exit(0);
@@ -200,16 +204,18 @@ public class Client {
                     System.out.println(restartResponse);
                     break;
                 case add:
-                    String addResponse = puzzleServer.addWord(command.param1);
-                    System.out.println(addResponse);
+                	// Call the remote method directly on wordServer.
+                    boolean addSuccess = wordServer.createWord(command.param1);
+                    System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
                     break;
+                    
                 case remove:
-                    String removeResponse = puzzleServer.removeWord(command.param1);
-                    System.out.println(removeResponse);
+                	boolean removeSuccess = wordServer.removeWord(command.param1);
+                    System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
                     break;
                 case check:
-                    String checkResponse = puzzleServer.checkWord(command.param1);
-                    System.out.println(checkResponse);
+                	boolean exists = wordServer.checkWord(command.param1);
+                    System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
                     break;
                 case help:
                     printHelp();
