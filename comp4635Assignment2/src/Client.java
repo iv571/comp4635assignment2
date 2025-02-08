@@ -8,7 +8,7 @@ import java.rmi.RemoteException;
 import java.util.StringTokenizer;
 
 public class Client {
-    private static final String USAGE = "java Client <server_url> <client_name>";
+    private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
     
     Account account;
     CrissCrossPuzzleServer puzzleServer;

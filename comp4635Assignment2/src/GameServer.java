@@ -6,12 +6,11 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 public class GameServer {
-    private static final String USAGE = "java Server <bank_rmi_url>";
-    private static final String BANK = "RBC";
+    private static final String USAGE = "java GameServer <rmi_url>";
     private static final String HOST = "localhost";
     private static final int REGISTRY_PORT = 1099;
 
-    public GameServer(String bankName) {
+    public GameServer(String name) {
         try {
         	// Create or get the RMI registry
             Registry registry;
@@ -23,34 +22,34 @@ public class GameServer {
             }
             
             
-         // --- Automatically start and bind the UserAccountServer ---
-            try {
-            	// Bind UserAccountServer
-                UserAccountImpl accountServer = new UserAccountImpl();
-                registry.rebind("UserAccountServer", accountServer);
-                System.out.println("UserAccountServer bound.");
-                System.out.println("UserAccountServer is running and bound as 'UserAccountServer'");
-            } catch (Exception e) {
-                System.err.println("Failed to start UserAccountServer: " + e.getMessage());
-                e.printStackTrace();
-            }
+//         // --- Automatically start and bind the UserAccountServer ---
+//            try {
+//            	// Bind UserAccountServer
+//                UserAccountImpl accountServer = new UserAccountImpl();
+//                registry.rebind("UserAccountServer", accountServer);
+//                System.out.println("UserAccountServer bound.");
+//                System.out.println("UserAccountServer is running and bound as 'UserAccountServer'");
+//            } catch (Exception e) {
+//                System.err.println("Failed to start UserAccountServer: " + e.getMessage());
+//                e.printStackTrace();
+//            }
+//            
+//            // --- Automatically start and bind the WordRepositoryServer ---
+//            try {
+//            	WordRepositoryImpl wordServer = new WordRepositoryImpl();
+//                registry.rebind("WordRepositoryServer", wordServer);
+//                System.out.println("WordRepositoryServer bound.");
+//            } catch (Exception e) {
+//                System.err.println("Failed to start WordRepositoryServer: " + e.getMessage());
+//                e.printStackTrace();
+//            }
             
-            // --- Automatically start and bind the WordRepositoryServer ---
-            try {
-            	WordRepositoryImpl wordServer = new WordRepositoryImpl();
-                registry.rebind("WordRepositoryServer", wordServer);
-                System.out.println("WordRepositoryServer bound.");
-            } catch (Exception e) {
-                System.err.println("Failed to start WordRepositoryServer: " + e.getMessage());
-                e.printStackTrace();
-            }
+            CrissCrossPuzzleServer gameServer = new CrissCrossImpl(name);
             
-            CrissCrossPuzzleServer bankobj = new CrissCrossImpl(bankName);
-            
-            //Create the string URL holding the object's name
-    		String rmiObjectName = "rmi://" + HOST + "/" + bankName;
-            Naming.rebind(bankName, bankobj);
-            System.out.println(bankobj + " is ready.");
+          //	Create the string URL holding the object's name
+            String rmiObjectName = "rmi://localhost:1099/GameServer";
+            Naming.rebind(rmiObjectName, gameServer);
+            System.out.println(gameServer + " is ready.");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -62,13 +61,14 @@ public class GameServer {
             System.exit(1);
         }
 
-        String bankName;
+        String name;
         if (args.length > 0) {
-            bankName = args[0];
+            name = args[0];
+            System.out.println(name);
         } else {
-            bankName = BANK;
+            name = "A";
         }
 
-        new GameServer(bankName);
+        new GameServer(name);
     }
 }

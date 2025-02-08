@@ -1,2 +1,3 @@
 user1;o;1
+test;test;1
 iyan;iyan;0
