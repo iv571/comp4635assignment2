@@ -57,13 +57,15 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     private String getConstrainedRandomWord(char constraint, int minLength) {
-    	 List<String> words = new ArrayList<>();
-         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+        List<String> words = new ArrayList<>();
+        char lowerConstraint = Character.toLowerCase(constraint);
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
              String line;
              while ((line = br.readLine()) != null) {
                  line = line.trim().toLowerCase();
+                 // Only add words that meet the length requirement and have the constraint letter exactly once.
                  if (!line.isEmpty() && line.length() >= minLength &&
-                     line.indexOf(Character.toLowerCase(constraint)) >= 0) {
+                     countOccurrences(line, lowerConstraint) == 1) {
                      words.add(line);
                  }
              }
@@ -71,20 +73,39 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
              System.err.println("Error reading words.txt: " + e.getMessage());
          }
          if (words.isEmpty()) {
+             // Optionally, you could relax the constraint here if no word qualifies.
              return "";
          }
          Random rand = new Random();
          return words.get(rand.nextInt(words.size()));
     }
 
+    private int countOccurrences(String str, char ch) {
+        int count = 0;
+        for (int i = 0; i < str.length(); i++) {
+             if (str.charAt(i) == ch) {
+                  count++;
+             }
+        }
+        return count;
+    }
     private char[][] constructPuzzle(String verticalStem, String[] horizontalWords) {
         int numRows = verticalStem.length();
-        int numCols = 20;
+        int padding = 4;
+        // Compute the longest word length among verticalStem and horizontalWords.
+        int maxWordLength = verticalStem.length();
+        for (String word : horizontalWords) {
+            if (word != null && word.length() > maxWordLength) {
+                maxWordLength = word.length();
+            }
+        }
+        
+        int numCols = maxWordLength + padding;
         char[][] grid = new char[numRows][numCols];
         for (int i = 0; i < numRows; i++) {
             Arrays.fill(grid[i], '.');
         }
-        int colForStem = 10;
+        int colForStem = numCols/2;
         for (int row = 0; row < verticalStem.length(); row++) {
             grid[row][colForStem] = verticalStem.charAt(row);
         }
@@ -144,45 +165,52 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
 
-	@Override
-	public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
-		   int effectiveLevel = Math.max(1, Math.min(level, 10));
-	        int verticalStemLength = (effectiveLevel < 7) ? 7 : (new Random().nextInt(effectiveLevel - 7 + 1) + 7);
+    @Override
+    public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
+        // Clamp the level between 1 and 10.
+        int effectiveLevel = Math.max(1, Math.min(level, 10));
+        // effectiveLevel now controls the number of horizontal words generated.
 
-	        GameSession session = new GameSession();
+        GameSession session = new GameSession();
 
-	        String candidate;
-	        do {
-	            candidate = getRandomWordFromFile(verticalStemLength);
-	        } while (candidate.length() < verticalStemLength);
-	        candidate = candidate.substring(0, verticalStemLength).toLowerCase();
-	        session.verticalStem = candidate;
+        // Get a candidate word from the file that is at least 'effectiveLevel' long.
+        String candidate;
+        do {
+            candidate = getRandomWordFromFile(effectiveLevel);
+        } while (candidate.length() < effectiveLevel);
+        // Use the entire candidate as the vertical stem.
+        session.verticalStem = candidate.toLowerCase();
+        // The vertical stem length is the full length of the candidate.
+        int verticalStemLength = candidate.length();
 
-	        session.horizontalWords = new String[verticalStemLength];
-	        Arrays.fill(session.horizontalWords, "");
-	        for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
-	            String hWord;
-	            do {
-	                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel);
-	            } while (hWord.isEmpty());
-	            session.horizontalWords[i] = hWord.toLowerCase();
-	        }
+        // Create an array for horizontal words of size 'effectiveLevel'.
+        // (This means we generate horizontal words only for rows 1 .. effectiveLevel-1.)
+        session.horizontalWords = new String[effectiveLevel];
+        Arrays.fill(session.horizontalWords, "");
+        for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
+            String hWord;
+            do {
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel);
+            } while (hWord.isEmpty());
+            session.horizontalWords[i] = hWord.toLowerCase();
+        }
 
-	        session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
-	        int numLetters = countPuzzleLetters(session.puzzle);
-	        session.failAttempts = failedAttemptFactor * numLetters;
+        // Construct the puzzle grid using the entire vertical stem (all its characters).
+        session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
+        int numLetters = countPuzzleLetters(session.puzzle);
+        session.failAttempts = failedAttemptFactor * numLetters;
 
-	        session.formattedPuzzle = formatPuzzle(session.puzzle);
-	        session.revealedPuzzle = revealPuzzle(session.puzzle);
-	        sessions.put(player, session);
+        session.formattedPuzzle = formatPuzzle(session.puzzle);
+        session.revealedPuzzle = revealPuzzle(session.puzzle);
+        sessions.put(player, session);
 
-	        System.out.println("Completed puzzle on server:");
-	        System.out.println(session.revealedPuzzle);
+        System.out.println("Completed puzzle on server:");
+        System.out.println(session.revealedPuzzle);
 
-	        return "Game started for " + player + "!\n" +
-	               session.formattedPuzzle +
-	               "\nAttempts allowed: " + session.failAttempts;
-	}
+        return "Game started for " + player + "!\n" +
+               session.formattedPuzzle +
+               "\nAttempts allowed: " + session.failAttempts;
+    }
 
 	@Override
 	public String guessLetter(String player, char letter) throws RemoteException {
@@ -226,76 +254,88 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
 	@Override
 	public String guessWord(String player, String word) throws RemoteException {
-		 GameSession session = sessions.get(player);
-	        if (session == null) {
-	            return "No active game session for " + player + ".";
+	    GameSession session = sessions.get(player);
+	    if (session == null) {
+	        return "No active game session for " + player + ".";
+	    }
+	    String lowerWord = word.toLowerCase();
+	    boolean wordFound = false;
+	    
+	    // Get dynamic grid dimensions.
+	    int gridWidth = session.puzzle[0].length;
+	    int colForStem = gridWidth / 2;
+	    
+	    // We'll use the delimiter "\n" for splitting and joining rows.
+	    // (You can adjust your formatPuzzle method accordingly if desired.)
+	    String[] rows = session.formattedPuzzle.split("\\+\\n");
+	    
+	    if (lowerWord.equals(session.verticalStem.toLowerCase())) {
+	        // The guess is for the vertical stem.
+	        for (int i = 0; i < rows.length && i < session.puzzle.length; i++) {
+	            char[] rowChars = rows[i].toCharArray();
+	            if (colForStem < rowChars.length) {
+	                // Reveal the vertical letter from the full puzzle.
+	                rowChars[colForStem] = session.puzzle[i][colForStem];
+	            }
+	            rows[i] = new String(rowChars);
 	        }
-	        String lowerWord = word.toLowerCase();
-	        boolean wordFound = false;
-
-	        if (lowerWord.equals(session.verticalStem.toLowerCase())) {
-	            int colForStem = 10;
-	            String[] rows = session.formattedPuzzle.split("\\+\\n");
-	            for (int i = 0; i < rows.length; i++) {
-	                if (i >= session.puzzle.length) break;
+	        session.formattedPuzzle = String.join("+\n", rows) + "+";
+	        session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
+	        wordFound = true;
+	    } else {
+	        // Look for a matching horizontal word.
+	        for (int i = 0; i < session.horizontalWords.length; i++) {
+	            String hWord = session.horizontalWords[i];
+	            if (hWord.isEmpty()) continue;
+	            if (hWord.equalsIgnoreCase(lowerWord)) {
+	                // Determine the constraint letter (from the vertical stem) for this row.
+	                char constraint = session.verticalStem.charAt(i);
+	                int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
+	                if (constraintIndex == -1) continue;
+	                // Compute the starting column for the horizontal word
+	                int startCol = colForStem - constraintIndex;
+	                startCol = Math.max(0, Math.min(startCol, gridWidth - hWord.length()));
+	                // Make sure we have the correct row from the formatted puzzle.
+	                if (i >= rows.length) continue;
 	                char[] rowChars = rows[i].toCharArray();
-	                if (colForStem < rowChars.length) {
-	                    rowChars[colForStem] = session.puzzle[i][colForStem];
-	                    rows[i] = new String(rowChars);
+	                // Reveal only the segment corresponding to the horizontal word by copying
+	                // the actual letters from the underlying puzzle.
+	                for (int j = 0; j < hWord.length() && (startCol + j) < gridWidth; j++) {
+	                    rowChars[startCol + j] = session.puzzle[i][startCol + j];
 	                }
-	            }
-	            session.formattedPuzzle = String.join("+\n", rows) + "+";
-	            session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
-	            wordFound = true;
-	        } else {
-	            for (int i = 0; i < session.horizontalWords.length; i++) {
-	                String hWord = session.horizontalWords[i];
-	                if (hWord.isEmpty()) continue;
-	                if (hWord.equalsIgnoreCase(lowerWord)) {
-	                    char constraint = session.verticalStem.charAt(i);
-	                    int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
-	                    if (constraintIndex == -1) continue;
-	                    int startCol = 10 - constraintIndex;
-	                    startCol = Math.max(0, Math.min(startCol, 20 - hWord.length()));
-	                    String[] rows = session.formattedPuzzle.split("\\+\\n");
-	                    if (i >= rows.length) continue;
-	                    char[] rowChars = rows[i].toCharArray();
-	                    for (int j = 0; j < hWord.length() && (startCol + j) < 20; j++) {
-	                        rowChars[startCol + j] = hWord.charAt(j);
-	                    }
-	                    rows[i] = new String(rowChars);
-	                    session.formattedPuzzle = String.join("+\n", rows) + "+";
-	                    session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
-	                    wordFound = true;
-	                    break;
-	                }
+	                rows[i] = new String(rowChars);
+	                session.formattedPuzzle = String.join("+\n", rows) + "+";
+	                session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
+	                wordFound = true;
+	                break;
 	            }
 	        }
-
-	        if (wordFound) {
-	            if (!session.formattedPuzzle.contains("_")) {
-	                sessions.remove(player);
-	                
-	                // After a win, update the score by +1:
-	                try {
-	                    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-	                    UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-	                    accountServer.updateScore(player, 1);
-	                } catch (Exception e) {
-	                    e.printStackTrace();
-	                }
-	                return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
+	    }
+	    
+	    if (wordFound) {
+	        // If there are no underscores left, the puzzle is complete.
+	        if (!session.formattedPuzzle.contains("_")) {
+	            sessions.remove(player);
+	            // After a win, update the score by +1.
+	            try {
+	                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+	                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+	                accountServer.updateScore(player, 1);
+	            } catch (Exception e) {
+	                e.printStackTrace();
 	            }
-	            return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
-	                   "\nAttempts remaining: " + session.failAttempts;
-	        } else {
-	            session.failAttempts--;
-	            if (session.failAttempts <= 0) {
-	                sessions.remove(player);
-	                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
-	            }
-	            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " + session.failAttempts;
+	            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
 	        }
+	        return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
+	               "\nAttempts remaining: " + session.failAttempts;
+	    } else {
+	        session.failAttempts--;
+	        if (session.failAttempts <= 0) {
+	            sessions.remove(player);
+	            return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
+	        }
+	        return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " + session.failAttempts;
+	    }
 	}
 
 	@Override

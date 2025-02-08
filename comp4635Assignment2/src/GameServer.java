@@ -64,7 +64,6 @@ public class GameServer {
         String name;
         if (args.length > 0) {
             name = args[0];
-            System.out.println(name);
         } else {
             name = "A";
         }
