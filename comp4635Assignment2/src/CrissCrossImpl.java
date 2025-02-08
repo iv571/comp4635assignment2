@@ -56,36 +56,46 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
          return words.get(rand.nextInt(words.size()));
     }
 
-    private String getConstrainedRandomWord(char constraint, int minLength) {
-        List<String> words = new ArrayList<>();
+    private String getConstrainedRandomWord(char constraint, int minLength, int verticalStemLength, int colForStem) {
+        List<String> validWords = new ArrayList<>();
         char lowerConstraint = Character.toLowerCase(constraint);
-        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
-             String line;
-             while ((line = br.readLine()) != null) {
-                 line = line.trim().toLowerCase();
-                 // Only add words that meet the length requirement and have the constraint letter exactly once.
-                 if (!line.isEmpty() && line.length() >= minLength &&
-                     countOccurrences(line, lowerConstraint) == 1) {
-                     words.add(line);
-                 }
-             }
-         } catch (IOException e) {
-             System.err.println("Error reading words.txt: " + e.getMessage());
-         }
-         if (words.isEmpty()) {
-             // Optionally, you could relax the constraint here if no word qualifies.
-             return "";
-         }
-         Random rand = new Random();
-         return words.get(rand.nextInt(words.size()));
-    }
+        int numCols = verticalStemLength + 4; // Calculate numCols based on vertical stem + padding
 
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim().toLowerCase();
+                if (line.isEmpty() || line.length() < minLength) continue;
+
+                int constraintIndex = line.indexOf(lowerConstraint);
+                if (constraintIndex == -1) continue; // Skip if constraint not found
+                if (countOccurrences(line, lowerConstraint) != 1) continue; // Ensure exactly one occurrence
+
+                // Check if word fits without grid clamping
+                int startCol = colForStem - constraintIndex;
+                if (startCol < 0 || startCol + line.length() > numCols) continue;
+
+                validWords.add(line);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading words.txt: " + e.getMessage());
+        }
+
+        return validWords.isEmpty() ? "" : validWords.get(new Random().nextInt(validWords.size()));
+    }
+    /**
+     * Counts the number of times a specific character appears in a string.
+     *
+     * @param str the string in which to count occurrences
+     * @param ch the character to count
+     * @return the number of times ch appears in str
+     */
     private int countOccurrences(String str, char ch) {
         int count = 0;
         for (int i = 0; i < str.length(); i++) {
-             if (str.charAt(i) == ch) {
-                  count++;
-             }
+            if (str.charAt(i) == ch) {
+                count++;
+            }
         }
         return count;
     }
@@ -166,10 +176,11 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
 
     @Override
-    public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
+    public synchronized String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
         // Clamp the level between 1 and 10.
         int effectiveLevel = Math.max(1, Math.min(level, 10));
         // effectiveLevel now controls the number of horizontal words generated.
+        
 
         GameSession session = new GameSession();
 
@@ -182,7 +193,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         session.verticalStem = candidate.toLowerCase();
         // The vertical stem length is the full length of the candidate.
         int verticalStemLength = candidate.length();
-
+        int numCols = verticalStemLength + 4;
+        int colForStem = numCols / 2;
         // Create an array for horizontal words of size 'effectiveLevel'.
         // (This means we generate horizontal words only for rows 1 .. effectiveLevel-1.)
         session.horizontalWords = new String[effectiveLevel];
@@ -190,7 +202,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
             String hWord;
             do {
-                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel);
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength, colForStem);
             } while (hWord.isEmpty());
             session.horizontalWords[i] = hWord.toLowerCase();
         }
@@ -213,11 +225,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
 	@Override
-	public String guessLetter(String player, char letter) throws RemoteException {
+	public synchronized String guessLetter(String player, char letter) throws RemoteException {
 		 GameSession session = sessions.get(player);
 	        if (session == null) {
 	            return "No active game session for " + player + ".";
 	        }
+	        
+	        
 	        char lowerLetter = Character.toLowerCase(letter);
 	        boolean found = false;
 	        char[] formattedChars = session.formattedPuzzle.toCharArray();
@@ -231,6 +245,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	        if (!found) {
 	            session.failAttempts--;
 	            if (session.failAttempts <= 0) {
+	            	try {
+		                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+		                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+		                accountServer.updateScore(player, -1);
+		            } catch (Exception e) {
+		                e.printStackTrace();
+		            }
 	                sessions.remove(player);
 	                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
 	            }
@@ -253,7 +274,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	}
 
 	@Override
-	public String guessWord(String player, String word) throws RemoteException {
+	public synchronized String guessWord(String player, String word) throws RemoteException {
 	    GameSession session = sessions.get(player);
 	    if (session == null) {
 	        return "No active game session for " + player + ".";
@@ -331,6 +352,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	    } else {
 	        session.failAttempts--;
 	        if (session.failAttempts <= 0) {
+	        	try {
+	                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+	                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+	                accountServer.updateScore(player, -1);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
 	            sessions.remove(player);
 	            return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
 	        }
@@ -348,7 +376,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	}
 
 	@Override
-	public String restartGame(String player) throws RemoteException {
+	public synchronized String restartGame(String player) throws RemoteException {
 		sessions.remove(player);
         // Restart with default parameters (adjust as needed)
         return startGame(player, 5, 3);

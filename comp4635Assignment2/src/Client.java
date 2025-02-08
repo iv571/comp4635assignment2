@@ -9,8 +9,7 @@ import java.util.StringTokenizer;
 
 public class Client {
     private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
-    
-    Account account;
+
     CrissCrossPuzzleServer puzzleServer;
     UserAccountServer accountServer;
     WordRepositoryServer wordServer;
@@ -136,6 +135,21 @@ public class Client {
             return null;
         }
         
+        String trimmed = userInput.trim();
+        
+        // Check for shortcut characters.
+        if (trimmed.equals("$")) {
+            // Shortcut for checking score.
+            return new Command(CommandName.score, "", 0);
+        } else if (trimmed.equals("!")) {
+            // Shortcut for starting a new game (restart).
+            return new Command(CommandName.restart, "", 0);
+        } else if (trimmed.equals("#")) {
+            // Shortcut for ending the current game.
+            return new Command(CommandName.end, "", 0);
+        }
+        
+        
         // Split the input on one or more whitespace characters.
         String[] tokens = userInput.trim().split("\\s+");
         
@@ -161,7 +175,21 @@ public class Client {
             }
             command.param1 = tokens[1]; // numberOfWords as a string
             command.param2 = tokens[2]; // failedAttemptFactor as a string
-        } else {
+        } // For commands that require one argument: letter, word, add, remove, check.
+        else if (commandName == CommandName.letter || commandName == CommandName.word ||
+                commandName == CommandName.add || commandName == CommandName.remove ||
+                commandName == CommandName.check) {
+           if (tokens.length < 2) {
+               System.out.println("Command " + commandName + " requires an argument.");
+               return null;
+           }
+           command.param1 = tokens[1];
+           if (tokens.length >= 3) {
+               command.param2 = tokens[2];
+           }
+       }
+        
+        else {
             // For other commands, assign the second token if available.
             if (tokens.length >= 2) {
                 command.param1 = tokens[1];
@@ -261,11 +289,10 @@ public class Client {
         switch (command.getCommandName()) {
             case quit:
                 System.exit(0);
-            case help:
-                for (CommandName commandName : CommandName.values()) {
-                    System.out.println(commandName);
-                }
+ 
                 return;
+		default:
+			break;
                         
         }
 
