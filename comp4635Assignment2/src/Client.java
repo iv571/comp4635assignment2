@@ -54,7 +54,7 @@ public class Client {
     }
     
     /**
-     * Displays the authentication menu.
+     * Displays the authentication menu. 
      */
     private void displayAuthenticationMenu() {
         System.out.println("---------Welcome to the Game Server---------");
