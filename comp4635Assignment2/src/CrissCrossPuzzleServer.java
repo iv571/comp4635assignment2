@@ -23,5 +23,9 @@ public interface CrissCrossPuzzleServer extends Remote {
 	
 	public String removeWord(String word) throws RemoteException;
 	
-	public String checkWord(String word) throws RemoteException;		
+	public String checkWord(String word) throws RemoteException;
+
+	String startMultiGame(String username, int numPlayers, int level) throws RemoteException, RejectedException;	
+	
+	String joinMultiGame(String player, String gameId) throws RemoteException, RejectedException;
 }

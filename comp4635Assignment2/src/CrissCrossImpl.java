@@ -20,6 +20,10 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
    
  // Map to hold a game session for each player
     private Map<String, GameSession> sessions = new ConcurrentHashMap<>();
+    
+    
+    //multiplayer manager
+	private Multiplayer multiplayerManager = new Multiplayer();
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
@@ -424,5 +428,18 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	        }
 	}
 	
-	
+	@Override
+	public synchronized String startMultiGame(String username, int numPlayers, int level)
+	        throws RemoteException, RejectedException {
+	    return multiplayerManager.startMultiGame(username, numPlayers, level);
+	}
+
+	@Override
+	public synchronized String joinMultiGame(String player, String gameId)
+	        throws RemoteException, RejectedException {
+	    // Delegate to the multiplayerManager instance.
+	    return multiplayerManager.joinMultiGame(player, gameId);
+	}
+
+
 }

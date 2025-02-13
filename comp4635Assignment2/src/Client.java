@@ -30,6 +30,8 @@ public class Client {
         score,   // check score
         scoreboard, //view scoreboard
         help,    // help
+        startmultiplayer, //start multiplayer game
+        joinmultiplayer, //join the multiplayer game
         quit     // quit
     }
 
@@ -247,6 +249,33 @@ public class Client {
                 	boolean exists = wordServer.checkWord(command.param1);
                     System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
                     break;
+                case startmultiplayer:
+                	 // Expected usage: startmultiplayer <numPlayers> <level>
+                    if (command.param1 == null || command.param2 == null) {
+                        System.out.println("Usage: startmultiplayer <numberOfPlayers> <level>");
+                        break;
+                    }
+                    int numPlayers = Integer.parseInt(command.param1);
+                    int level = Integer.parseInt(command.param2);
+                    // Call remote method to start a multi-player game.
+                    String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level);
+                    System.out.println(startMPResponse);
+                    break;
+                    
+                    
+                case joinmultiplayer:
+                	 // Expected usage: startmultiplayer <numPlayers> <level>
+                    if (command.param1 == null) {
+                        System.out.println("Usage: joinmultiplayer <gameId>");
+                        break;
+                    }
+                    
+                    String gameId = command.param1;
+                    // Call remote method to start a multi-player game.
+                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
+                    System.out.println(joinMPResponse);
+                    break;
+                	
                 case help:
                     printHelp();
                     break;
