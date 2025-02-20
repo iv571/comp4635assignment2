@@ -26,7 +26,7 @@ public interface CrissCrossPuzzleServer extends Remote {
 
 	String startMultiGame(String username, int numPlayers, int level) throws RemoteException, RejectedException;
 
-	String joinMultiGame(String player, String gameId) throws RemoteException, RejectedException;
+	// String joinMultiGame(String player, String gameId) throws RemoteException, RejectedException;
 
-	List<String> getActiveGames() throws RemoteException;
+	// List<String> getActiveGames() throws RemoteException;
 }
