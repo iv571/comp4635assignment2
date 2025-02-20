@@ -166,7 +166,11 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         try {
             UserAccountImpl accountServer = new UserAccountImpl();
             // Create or get the RMI registry on port 1099.
-            java.rmi.registry.LocateRegistry.createRegistry(1099);
+            try {
+                java.rmi.registry.LocateRegistry.getRegistry(1099).list();
+            } catch (Exception e) {
+                java.rmi.registry.LocateRegistry.createRegistry(1099);
+            }
             // Bind to the RMI registry under the name "UserAccountServer"
             java.rmi.Naming.rebind("UserAccountServer", accountServer);
             System.out.println("UserAccountServer is running...");

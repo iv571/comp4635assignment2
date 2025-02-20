@@ -1,5 +1,4 @@
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,36 +15,36 @@ public class Client {
     private String serverUrl;
     String clientname;
     String username = " ";
-    
+
     // Define the commands the client supports.
     enum CommandName {
-        start,   // start <numberOfWords> <failedAttemptFactor>
-        letter,  // letter <character>
-        word,    // word <word>
-        end,     // end
+        start, // start <numberOfWords> <failedAttemptFactor>
+        letter, // letter <character>
+        word, // word <word>
+        end, // end
         restart, // restart
-        add,     // add <word>
-        remove,  // remove <word>
-        check,   // check <word>
-        score,   // check score
-        scoreboard, //view scoreboard
-        help,    // help
-        startmultiplayer, //start multiplayer game
-        joinmultiplayer, //join the multiplayer game
-        quit     // quit
+        add, // add <word>
+        remove, // remove <word>
+        check, // check <word>
+        score, // check score
+        scoreboard, // view scoreboard
+        help, // help
+        startmultiplayer, // start multiplayer game
+        joinmultiplayer, // join the multiplayer game
+        quit // quit
     }
 
     public Client(String serverUrl, String clientName) {
         this.serverUrl = serverUrl;
         this.clientname = clientName;
-        
+
         try {
             // Look up the remote puzzle server object using the provided URL.
-            puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
-         // Look up the remote user account server (assumed to be at a fixed URL).
+        	CrissCrossPuzzleServer puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
+            // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
-            
-         // Look up the remote user account server (assumed to be at a fixed URL).
+
+            // Look up the remote user account server (assumed to be at a fixed URL).
             wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
         } catch (Exception e) {
             System.out.println("The runtime failed: " + e.getMessage());
@@ -53,9 +52,9 @@ public class Client {
         }
         System.out.println("Connected to puzzle server: " + serverUrl);
     }
-    
+
     /**
-     * Displays the authentication menu. 
+     * Displays the authentication menu.
      */
     private void displayAuthenticationMenu() {
         System.out.println("---------Welcome to the Game Server---------");
@@ -66,10 +65,9 @@ public class Client {
         System.out.println();
     }
 
-    
     public void run() {
         BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
-        
+
         boolean authenticated = false;
         while (!authenticated) {
             displayAuthenticationMenu();
@@ -91,7 +89,7 @@ public class Client {
                     continue;
                 }
                 String password = st.nextToken();
-                
+
                 if (command.equals("CREATE")) {
                     boolean created = accountServer.createAccount(username, password);
                     if (created) {
@@ -115,8 +113,8 @@ public class Client {
                 e.printStackTrace();
             }
         }
-        
-     // Display the help menu right after successful login.
+
+        // Display the help menu right after successful login.
         printHelp();
 
         while (true) {
@@ -136,9 +134,9 @@ public class Client {
         if (userInput == null || userInput.trim().isEmpty()) {
             return null;
         }
-        
+
         String trimmed = userInput.trim();
-        
+
         // Check for shortcut characters.
         if (trimmed.equals("$")) {
             // Shortcut for checking score.
@@ -150,11 +148,10 @@ public class Client {
             // Shortcut for ending the current game.
             return new Command(CommandName.end, "", 0);
         }
-        
-        
+
         // Split the input on one or more whitespace characters.
         String[] tokens = userInput.trim().split("\\s+");
-        
+
         // The first token is the command name.
         CommandName commandName;
         try {
@@ -165,10 +162,11 @@ public class Client {
             System.out.println("Illegal command");
             return null;
         }
-        
-        // Create a Command object. (Assuming your Command constructor takes a CommandName, a string, and a float.)
+
+        // Create a Command object. (Assuming your Command constructor takes a
+        // CommandName, a string, and a float.)
         Command command = new Command(commandName, "", 0);
-        
+
         // Handle the "start" command specially (it requires two parameters).
         if (commandName == CommandName.start) {
             if (tokens.length < 3) {
@@ -181,16 +179,16 @@ public class Client {
         else if (commandName == CommandName.letter || commandName == CommandName.word ||
                 commandName == CommandName.add || commandName == CommandName.remove ||
                 commandName == CommandName.check) {
-           if (tokens.length < 2) {
-               System.out.println("Command " + commandName + " requires an argument.");
-               return null;
-           }
-           command.param1 = tokens[1];
-           if (tokens.length >= 3) {
-               command.param2 = tokens[2];
-           }
-       }
-        
+            if (tokens.length < 2) {
+                System.out.println("Command " + commandName + " requires an argument.");
+                return null;
+            }
+            command.param1 = tokens[1];
+            if (tokens.length >= 3) {
+                command.param2 = tokens[2];
+            }
+        }
+
         else {
             // For other commands, assign the second token if available.
             if (tokens.length >= 2) {
@@ -208,7 +206,7 @@ public class Client {
         if (command == null) {
             return;
         }
-        
+
         try {
             switch (command.commandName) {
                 case start:
@@ -236,21 +234,22 @@ public class Client {
                     System.out.println(restartResponse);
                     break;
                 case add:
-                	// Call the remote method directly on wordServer.
+                    // Call the remote method directly on wordServer.
                     boolean addSuccess = wordServer.createWord(command.param1);
                     System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
                     break;
-                    
+
                 case remove:
-                	boolean removeSuccess = wordServer.removeWord(command.param1);
+                    boolean removeSuccess = wordServer.removeWord(command.param1);
                     System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
                     break;
                 case check:
-                	boolean exists = wordServer.checkWord(command.param1);
-                    System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
+                    boolean exists = wordServer.checkWord(command.param1);
+                    System.out.println(
+                            exists ? "Word exists in the repository." : "Word does not exist in the repository.");
                     break;
                 case startmultiplayer:
-                	 // Expected usage: startmultiplayer <numPlayers> <level>
+                    // Expected usage: startmultiplayer <numPlayers> <level>
                     if (command.param1 == null || command.param2 == null) {
                         System.out.println("Usage: startmultiplayer <numberOfPlayers> <level>");
                         break;
@@ -261,21 +260,20 @@ public class Client {
                     String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level);
                     System.out.println(startMPResponse);
                     break;
-                    
-                    
+
                 case joinmultiplayer:
-                	 // Expected usage: startmultiplayer <numPlayers> <level>
+                    // Expected usage: startmultiplayer <numPlayers> <level>
                     if (command.param1 == null) {
                         System.out.println("Usage: joinmultiplayer <gameId>");
                         break;
                     }
-                    
+
                     String gameId = command.param1;
                     // Call remote method to start a multi-player game.
-                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
-                    System.out.println(joinMPResponse);
+                    // String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
+                    // System.out.println(joinMPResponse);
                     break;
-                	
+
                 case help:
                     printHelp();
                     break;
@@ -285,22 +283,22 @@ public class Client {
                     System.out.println("Your current score is: " + score);
                     break;
                 case scoreboard:
-                	  try {
-                	        // Retrieve the scoreboard map from the account server.
-                	        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard();
-                	        System.out.println("---- Scoreboard ----");
-                	        if (scoreboard.isEmpty()) {
-                	            System.out.println("No scores available.");
-                	        } else {
-                	            for (java.util.Map.Entry<String, Integer> entry : scoreboard.entrySet()) {
-                	                System.out.println(entry.getKey() + " : " + entry.getValue());
-                	            }
-                	        }
-                	        System.out.println("--------------------");
-                	    } catch (RemoteException e) {
-                	        System.out.println("Error retrieving scoreboard: " + e.getMessage());
-                	    }
-                	    break;   
+                    try {
+                        // Retrieve the scoreboard map from the account server.
+                        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard();
+                        System.out.println("---- Scoreboard ----");
+                        if (scoreboard.isEmpty()) {
+                            System.out.println("No scores available.");
+                        } else {
+                            for (java.util.Map.Entry<String, Integer> entry : scoreboard.entrySet()) {
+                                System.out.println(entry.getKey() + " : " + entry.getValue());
+                            }
+                        }
+                        System.out.println("--------------------");
+                    } catch (RemoteException e) {
+                        System.out.println("Error retrieving scoreboard: " + e.getMessage());
+                    }
+                    break;
                 case quit:
                     System.out.println("Quitting...");
                     System.exit(0);
@@ -318,11 +316,11 @@ public class Client {
         switch (command.getCommandName()) {
             case quit:
                 System.exit(0);
- 
+
                 return;
-		default:
-			break;
-                        
+            default:
+                break;
+
         }
 
         // all further commands require a name to be specified
@@ -336,9 +334,6 @@ public class Client {
             return;
         }
 
-       
-
-    
     }
 
     private class Command {
@@ -366,12 +361,12 @@ public class Client {
             this.amount = amount;
         }
     }
-    
+
     /**
      * Prints a list of available commands.
      */
     private void printHelp() {
-    	String border = "+--------------------------------------------------------------------+";
+        String border = "+--------------------------------------------------------------------+";
         System.out.println(border);
         System.out.println("|                   CRISS CROSS PUZZLE                               |");
         System.out.println(border);
@@ -391,10 +386,9 @@ public class Client {
         System.out.println("|   quit                                       - Exit the client     |");
         System.out.println(border);
     }
-   
 
     public static void main(String[] args) {
-    	if (args.length != 2) {
+        if (args.length != 2) {
             System.out.println(USAGE);
             System.exit(1);
         }
