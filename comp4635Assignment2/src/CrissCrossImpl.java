@@ -440,4 +440,10 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 	    // Delegate to the multiplayerManager instance.
 	    return multiplayerManager.joinMultiGame(player, gameId);
 	}
+
+	@Override
+	public List<String> getActiveGames() throws RemoteException {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
