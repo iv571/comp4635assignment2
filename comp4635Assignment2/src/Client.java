@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.util.StringTokenizer;
+import java.util.Map;
 
 public class Client {
     private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
@@ -31,6 +32,7 @@ public class Client {
         help, // help
         startmultiplayer, // start multiplayer game
         joinmultiplayer, // join the multiplayer game
+        showactivegames, // show existing game room
         quit // quit
     }
 
@@ -40,7 +42,7 @@ public class Client {
 
         try {
             // Look up the remote puzzle server object using the provided URL.
-        	puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
+            puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
             // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
 
@@ -268,10 +270,15 @@ public class Client {
                         break;
                     }
 
-                    String gameId = command.param1;
+                    int gameId = Integer.parseInt(command.param1);
                     // Call remote method to start a multi-player game.
-                    // String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
-                    // System.out.println(joinMPResponse);
+                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
+                    System.out.println(joinMPResponse);
+                    break;
+
+                case showactivegames:
+                    String activeRooms = puzzleServer.showActiveGameRooms();
+                    System.out.println(activeRooms);
                     break;
 
                 case help:
@@ -366,24 +373,30 @@ public class Client {
      * Prints a list of available commands.
      */
     private void printHelp() {
-        String border = "+--------------------------------------------------------------------+";
+        String border = "+-----------------------------------------------------------------------------+";
         System.out.println(border);
-        System.out.println("|                   CRISS CROSS PUZZLE                               |");
+        System.out.println("|                          CRISS CROSS PUZZLE                                 |");
         System.out.println(border);
-        System.out.println("| Commands:                                                          |");
-        System.out.println("|                                                                    |");
-        System.out.println("|   start <numberOfWords> <failedAttemptFactor>  - Start a new game  |");
-        System.out.println("|   letter <character>                         - Guess a letter      |");
-        System.out.println("|   word <word>                                - Guess a word        |");
-        System.out.println("|   end                                        - End the current game|");
-        System.out.println("|   restart                                    - Restart the game    |");
-        System.out.println("|   add <word>                                 - Add a new word      |");
-        System.out.println("|   remove <word>                              - Remove a word       |");
-        System.out.println("|   check <word>                               - Check word existence|");
-        System.out.println("|   score                                      - Get your user score |");
-        System.out.println("|   scoreboard                                 - Get the scoreboard  |");
-        System.out.println("|   help                                       - Display this help   |");
-        System.out.println("|   quit                                       - Exit the client     |");
+        System.out.println("| Commands:                                                                   |");
+        System.out.println("|                                                                             |");
+        System.out.println("|                         MULTI-PLAYER MODE                                   |");
+        System.out.println("|   startmultiplayer <numPlayers> <level>        - Start a multi-player game  |");
+        System.out.println("|   joinmultiplayer <gameId>                     - Join a multi-player game   |");
+        System.out.println("|   showactivegames                              - Show all active game rooms |");
+        System.out.println("|-----------------------------------------------------------------------------|");
+        System.out.println("|                         SINGLE-PLAYER MODE                                  |");
+        System.out.println("|   start <numberOfWords> <failedAttemptFactor>  - Start a new game           |");
+        System.out.println("|   letter <character>                         - Guess a letter               |");
+        System.out.println("|   word <word>                                - Guess a word                 |");
+        System.out.println("|   end                                        - End the current game         |");
+        System.out.println("|   restart                                    - Restart the game             |");
+        System.out.println("|   add <word>                                 - Add a new word               |");
+        System.out.println("|   remove <word>                              - Remove a word                |");
+        System.out.println("|   check <word>                               - Check word existence         |");
+        System.out.println("|   score                                      - Get your user score          |");
+        System.out.println("|   scoreboard                                 - Get the scoreboard           |");
+        System.out.println("|   help                                       - Display this help            |");
+        System.out.println("|   quit                                       - Exit the client              |");
         System.out.println(border);
     }
 

@@ -1,5 +1,4 @@
 
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -14,22 +13,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 @SuppressWarnings("serial")
 public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuzzleServer {
-   
- // Map to hold a game session for each player
+
+    // Map to hold a game session for each player
     private Map<String, GameSession> sessions = new ConcurrentHashMap<>();
-    
-    
-    //multiplayer manager
-	private Multiplayer multiplayerManager = new Multiplayer();
+
+    // multiplayer manager
+    private Multiplayer multiplayerManager = new Multiplayer();
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
     }
-    
- // Inner class to represent a game session per player.
+
+    // Inner class to represent a game session per player.
     private class GameSession {
         String verticalStem;
         String[] horizontalWords;
@@ -39,25 +38,25 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int failAttempts;
         // Additional game state (e.g., score) could be added here.
     }
-    
+
     private String getRandomWordFromFile(int minLength) {
-    	 List<String> words = new ArrayList<>();
-         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
-             String line;
-             while ((line = br.readLine()) != null) {
-                 line = line.trim().toLowerCase();
-                 if (!line.isEmpty() && line.length() >= minLength) {
-                     words.add(line);
-                 }
-             }
-         } catch (IOException e) {
-             System.err.println("Error reading words.txt: " + e.getMessage());
-         }
-         if (words.isEmpty()) {
-             return "";
-         }
-         Random rand = new Random();
-         return words.get(rand.nextInt(words.size()));
+        List<String> words = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim().toLowerCase();
+                if (!line.isEmpty() && line.length() >= minLength) {
+                    words.add(line);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading words.txt: " + e.getMessage());
+        }
+        if (words.isEmpty()) {
+            return "";
+        }
+        Random rand = new Random();
+        return words.get(rand.nextInt(words.size()));
     }
 
     private String getConstrainedRandomWord(char constraint, int minLength, int verticalStemLength, int colForStem) {
@@ -69,15 +68,19 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim().toLowerCase();
-                if (line.isEmpty() || line.length() < minLength) continue;
+                if (line.isEmpty() || line.length() < minLength)
+                    continue;
 
                 int constraintIndex = line.indexOf(lowerConstraint);
-                if (constraintIndex == -1) continue; // Skip if constraint not found
-                if (countOccurrences(line, lowerConstraint) != 1) continue; // Ensure exactly one occurrence
+                if (constraintIndex == -1)
+                    continue; // Skip if constraint not found
+                if (countOccurrences(line, lowerConstraint) != 1)
+                    continue; // Ensure exactly one occurrence
 
                 // Check if word fits without grid clamping
                 int startCol = colForStem - constraintIndex;
-                if (startCol < 0 || startCol + line.length() > numCols) continue;
+                if (startCol < 0 || startCol + line.length() > numCols)
+                    continue;
 
                 validWords.add(line);
             }
@@ -87,11 +90,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
         return validWords.isEmpty() ? "" : validWords.get(new Random().nextInt(validWords.size()));
     }
+
     /**
      * Counts the number of times a specific character appears in a string.
      *
      * @param str the string in which to count occurrences
-     * @param ch the character to count
+     * @param ch  the character to count
      * @return the number of times ch appears in str
      */
     private int countOccurrences(String str, char ch) {
@@ -103,6 +107,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         }
         return count;
     }
+
     private char[][] constructPuzzle(String verticalStem, String[] horizontalWords) {
         int numRows = verticalStem.length();
         int padding = 4;
@@ -113,22 +118,24 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 maxWordLength = word.length();
             }
         }
-        
+
         int numCols = maxWordLength + padding;
         char[][] grid = new char[numRows][numCols];
         for (int i = 0; i < numRows; i++) {
             Arrays.fill(grid[i], '.');
         }
-        int colForStem = numCols/2;
+        int colForStem = numCols / 2;
         for (int row = 0; row < verticalStem.length(); row++) {
             grid[row][colForStem] = verticalStem.charAt(row);
         }
         for (int row = 0; row < horizontalWords.length && row < numRows; row++) {
             String hWord = horizontalWords[row];
-            if (hWord.isEmpty()) continue;
+            if (hWord.isEmpty())
+                continue;
             char constraint = verticalStem.charAt(row);
             int constraintIndex = hWord.indexOf(Character.toLowerCase(constraint));
-            if (constraintIndex < 0) continue;
+            if (constraintIndex < 0)
+                continue;
             int startCol = colForStem - constraintIndex;
             startCol = Math.max(0, Math.min(startCol, numCols - hWord.length()));
             for (int j = 0; j < hWord.length() && (startCol + j) < numCols; j++) {
@@ -143,15 +150,15 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     private int countPuzzleLetters(char[][] puzzle) {
-    	  int count = 0;
-          for (char[] row : puzzle) {
-              for (char c : row) {
-                  if (c != '.') {
-                      count++;
-                  }
-              }
-          }
-          return count;
+        int count = 0;
+        for (char[] row : puzzle) {
+            for (char c : row) {
+                if (c != '.') {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private String formatPuzzle(char[][] puzzle) {
@@ -178,13 +185,11 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return sb.toString();
     }
 
-
     @Override
     public synchronized String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
         // Clamp the level between 1 and 10.
         int effectiveLevel = Math.max(1, Math.min(level, 10));
         // effectiveLevel now controls the number of horizontal words generated.
-        
 
         GameSession session = new GameSession();
 
@@ -200,18 +205,21 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int numCols = verticalStemLength + 4;
         int colForStem = numCols / 2;
         // Create an array for horizontal words of size 'effectiveLevel'.
-        // (This means we generate horizontal words only for rows 1 .. effectiveLevel-1.)
+        // (This means we generate horizontal words only for rows 1 ..
+        // effectiveLevel-1.)
         session.horizontalWords = new String[effectiveLevel];
         Arrays.fill(session.horizontalWords, "");
         for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
             String hWord;
             do {
-                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength, colForStem);
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength,
+                        colForStem);
             } while (hWord.isEmpty());
             session.horizontalWords[i] = hWord.toLowerCase();
         }
 
-        // Construct the puzzle grid using the entire vertical stem (all its characters).
+        // Construct the puzzle grid using the entire vertical stem (all its
+        // characters).
         session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
         int numLetters = countPuzzleLetters(session.puzzle);
         session.failAttempts = failedAttemptFactor * numLetters;
@@ -224,46 +232,126 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         System.out.println(session.revealedPuzzle);
 
         return "Game started for " + player + "!\n" +
-               session.formattedPuzzle +
-               "\nAttempts allowed: " + session.failAttempts;
+                session.formattedPuzzle +
+                "\nAttempts allowed: " + session.failAttempts;
     }
 
-	@Override
-	public synchronized String guessLetter(String player, char letter) throws RemoteException {
-		 GameSession session = sessions.get(player);
-	        if (session == null) {
-	            return "No active game session for " + player + ".";
-	        }
-	        
-	        
-	        char lowerLetter = Character.toLowerCase(letter);
-	        boolean found = false;
-	        char[] formattedChars = session.formattedPuzzle.toCharArray();
-	        char[] revealedChars = session.revealedPuzzle.toCharArray();
-	        for (int i = 0; i < revealedChars.length; i++) {
-	            if (Character.toLowerCase(revealedChars[i]) == lowerLetter && formattedChars[i] == '_') {
-	                formattedChars[i] = revealedChars[i];
-	                found = true;
-	            }
-	        }
-	        if (!found) {
-	            session.failAttempts--;
-	            if (session.failAttempts <= 0) {
-	            	try {
-		                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-		                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-		                accountServer.updateScore(player, -1);
-		            } catch (Exception e) {
-		                e.printStackTrace();
-		            }
-	                sessions.remove(player);
-	                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
-	            }
-	        }
-	        session.formattedPuzzle = new String(formattedChars);
-	        if (!session.formattedPuzzle.contains("_")) {
-	            sessions.remove(player);
-	         // After a win, update the score by +1:
+    @Override
+    public synchronized String guessLetter(String player, char letter) throws RemoteException {
+        GameSession session = sessions.get(player);
+        if (session == null) {
+            return "No active game session for " + player + ".";
+        }
+
+        char lowerLetter = Character.toLowerCase(letter);
+        boolean found = false;
+        char[] formattedChars = session.formattedPuzzle.toCharArray();
+        char[] revealedChars = session.revealedPuzzle.toCharArray();
+        for (int i = 0; i < revealedChars.length; i++) {
+            if (Character.toLowerCase(revealedChars[i]) == lowerLetter && formattedChars[i] == '_') {
+                formattedChars[i] = revealedChars[i];
+                found = true;
+            }
+        }
+        if (!found) {
+            session.failAttempts--;
+            if (session.failAttempts <= 0) {
+                try {
+                    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+                    UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+                    accountServer.updateScore(player, -1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                sessions.remove(player);
+                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
+            }
+        }
+        session.formattedPuzzle = new String(formattedChars);
+        if (!session.formattedPuzzle.contains("_")) {
+            sessions.remove(player);
+            // After a win, update the score by +1:
+            try {
+                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+                accountServer.updateScore(player, 1);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
+        }
+        return "Current puzzle state:\n" + session.formattedPuzzle +
+                "\nAttempts remaining: " + session.failAttempts;
+    }
+
+    @Override
+    public synchronized String guessWord(String player, String word) throws RemoteException {
+        GameSession session = sessions.get(player);
+        if (session == null) {
+            return "No active game session for " + player + ".";
+        }
+        String lowerWord = word.toLowerCase();
+        boolean wordFound = false;
+
+        // Get dynamic grid dimensions.
+        int gridWidth = session.puzzle[0].length;
+        int colForStem = gridWidth / 2;
+
+        // We'll use the delimiter "\n" for splitting and joining rows.
+        // (You can adjust your formatPuzzle method accordingly if desired.)
+        String[] rows = session.formattedPuzzle.split("\\+\\n");
+
+        if (lowerWord.equals(session.verticalStem.toLowerCase())) {
+            // The guess is for the vertical stem.
+            for (int i = 0; i < rows.length && i < session.puzzle.length; i++) {
+                char[] rowChars = rows[i].toCharArray();
+                if (colForStem < rowChars.length) {
+                    // Reveal the vertical letter from the full puzzle.
+                    rowChars[colForStem] = session.puzzle[i][colForStem];
+                }
+                rows[i] = new String(rowChars);
+            }
+            session.formattedPuzzle = String.join("+\n", rows) + "+";
+            session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
+            wordFound = true;
+        } else {
+            // Look for a matching horizontal word.
+            for (int i = 0; i < session.horizontalWords.length; i++) {
+                String hWord = session.horizontalWords[i];
+                if (hWord.isEmpty())
+                    continue;
+                if (hWord.equalsIgnoreCase(lowerWord)) {
+                    // Determine the constraint letter (from the vertical stem) for this row.
+                    char constraint = session.verticalStem.charAt(i);
+                    int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
+                    if (constraintIndex == -1)
+                        continue;
+                    // Compute the starting column for the horizontal word
+                    int startCol = colForStem - constraintIndex;
+                    startCol = Math.max(0, Math.min(startCol, gridWidth - hWord.length()));
+                    // Make sure we have the correct row from the formatted puzzle.
+                    if (i >= rows.length)
+                        continue;
+                    char[] rowChars = rows[i].toCharArray();
+                    // Reveal only the segment corresponding to the horizontal word by copying
+                    // the actual letters from the underlying puzzle.
+                    for (int j = 0; j < hWord.length() && (startCol + j) < gridWidth; j++) {
+                        rowChars[startCol + j] = session.puzzle[i][startCol + j];
+                    }
+                    rows[i] = new String(rowChars);
+                    session.formattedPuzzle = String.join("+\n", rows) + "+";
+                    session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
+                    wordFound = true;
+                    break;
+                }
+            }
+        }
+
+        if (wordFound) {
+            // If there are no underscores left, the puzzle is complete.
+            if (!session.formattedPuzzle.contains("_")) {
+                sessions.remove(player);
+                // After a win, update the score by +1.
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                     UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
@@ -271,140 +359,63 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-	            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
-	        }
-	        return "Current puzzle state:\n" + session.formattedPuzzle +
-	               "\nAttempts remaining: " + session.failAttempts;
-	}
+                return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
+            }
+            return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
+                    "\nAttempts remaining: " + session.failAttempts;
+        } else {
+            session.failAttempts--;
+            if (session.failAttempts <= 0) {
+                try {
+                    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+                    UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
+                    accountServer.updateScore(player, -1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                sessions.remove(player);
+                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
+            }
+            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: "
+                    + session.failAttempts;
+        }
+    }
 
-	@Override
-	public synchronized String guessWord(String player, String word) throws RemoteException {
-	    GameSession session = sessions.get(player);
-	    if (session == null) {
-	        return "No active game session for " + player + ".";
-	    }
-	    String lowerWord = word.toLowerCase();
-	    boolean wordFound = false;
-	    
-	    // Get dynamic grid dimensions.
-	    int gridWidth = session.puzzle[0].length;
-	    int colForStem = gridWidth / 2;
-	    
-	    // We'll use the delimiter "\n" for splitting and joining rows.
-	    // (You can adjust your formatPuzzle method accordingly if desired.)
-	    String[] rows = session.formattedPuzzle.split("\\+\\n");
-	    
-	    if (lowerWord.equals(session.verticalStem.toLowerCase())) {
-	        // The guess is for the vertical stem.
-	        for (int i = 0; i < rows.length && i < session.puzzle.length; i++) {
-	            char[] rowChars = rows[i].toCharArray();
-	            if (colForStem < rowChars.length) {
-	                // Reveal the vertical letter from the full puzzle.
-	                rowChars[colForStem] = session.puzzle[i][colForStem];
-	            }
-	            rows[i] = new String(rowChars);
-	        }
-	        session.formattedPuzzle = String.join("+\n", rows) + "+";
-	        session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
-	        wordFound = true;
-	    } else {
-	        // Look for a matching horizontal word.
-	        for (int i = 0; i < session.horizontalWords.length; i++) {
-	            String hWord = session.horizontalWords[i];
-	            if (hWord.isEmpty()) continue;
-	            if (hWord.equalsIgnoreCase(lowerWord)) {
-	                // Determine the constraint letter (from the vertical stem) for this row.
-	                char constraint = session.verticalStem.charAt(i);
-	                int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
-	                if (constraintIndex == -1) continue;
-	                // Compute the starting column for the horizontal word
-	                int startCol = colForStem - constraintIndex;
-	                startCol = Math.max(0, Math.min(startCol, gridWidth - hWord.length()));
-	                // Make sure we have the correct row from the formatted puzzle.
-	                if (i >= rows.length) continue;
-	                char[] rowChars = rows[i].toCharArray();
-	                // Reveal only the segment corresponding to the horizontal word by copying
-	                // the actual letters from the underlying puzzle.
-	                for (int j = 0; j < hWord.length() && (startCol + j) < gridWidth; j++) {
-	                    rowChars[startCol + j] = session.puzzle[i][startCol + j];
-	                }
-	                rows[i] = new String(rowChars);
-	                session.formattedPuzzle = String.join("+\n", rows) + "+";
-	                session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
-	                wordFound = true;
-	                break;
-	            }
-	        }
-	    }
-	    
-	    if (wordFound) {
-	        // If there are no underscores left, the puzzle is complete.
-	        if (!session.formattedPuzzle.contains("_")) {
-	            sessions.remove(player);
-	            // After a win, update the score by +1.
-	            try {
-	                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-	                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-	                accountServer.updateScore(player, 1);
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	            }
-	            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
-	        }
-	        return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
-	               "\nAttempts remaining: " + session.failAttempts;
-	    } else {
-	        session.failAttempts--;
-	        if (session.failAttempts <= 0) {
-	        	try {
-	                Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-	                UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-	                accountServer.updateScore(player, -1);
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	            }
-	            sessions.remove(player);
-	            return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
-	        }
-	        return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " + session.failAttempts;
-	    }
-	}
-
-	@Override
-	public String endGame(String player) throws RemoteException {
-		GameSession session = sessions.remove(player);
+    @Override
+    public String endGame(String player) throws RemoteException {
+        GameSession session = sessions.remove(player);
         if (session == null) {
             return "No active game session for " + player + ".";
         }
         return "Game ended for " + player + ".\nThe solution was:\n" + session.revealedPuzzle;
-	}
+    }
 
-	@Override
-	public synchronized String restartGame(String player) throws RemoteException {
-		sessions.remove(player);
+    @Override
+    public synchronized String restartGame(String player) throws RemoteException {
+        sessions.remove(player);
         // Restart with default parameters (adjust as needed)
         return startGame(player, 5, 3);
-	}
+    }
 
-	@Override
-	public String addWord(String word) throws RemoteException {
-		try {
-	        // Obtain the registry on localhost at port 1099.
-	        Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-	        // Look up the remote object using its bound name.
-	        WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
-	        // Call the remote method to create the word.
-	        boolean success = wordRepo.createWord(word);
-	        return success ? "Word added successfully." : "Failed to add word.";
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        return "Error while adding word: " + e.getMessage();
-	    }
-	}
+    @Override
+    public String addWord(String word) throws RemoteException {
+        try {
+            // Obtain the registry on localhost at port 1099.
+            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+            // Look up the remote object using its bound name.
+            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
+            // Call the remote method to create the word.
+            boolean success = wordRepo.createWord(word);
+            return success ? "Word added successfully." : "Failed to add word.";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error while adding word: " + e.getMessage();
+        }
+    }
 
-	@Override
-	public String removeWord(String word) throws RemoteException {
-		try {
+    @Override
+    public String removeWord(String word) throws RemoteException {
+        try {
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
             WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
             boolean success = wordRepo.removeWord(word);
@@ -413,37 +424,36 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             e.printStackTrace();
             return "Error while removing word: " + e.getMessage();
         }
-	}
+    }
 
-	@Override
-	public String checkWord(String word) throws RemoteException {
-		 try {
-	            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-	            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
-	            boolean exists = wordRepo.checkWord(word);
-	            return exists ? "Word exists in the repository." : "Word does not exist in the repository.";
-	        } catch (Exception e) {
-	            e.printStackTrace();
-	            return "Error while checking word: " + e.getMessage();
-	        }
-	}
-	
-	@Override
-	public synchronized String startMultiGame(String username, int numPlayers, int level)
-	        throws RemoteException, RejectedException {
-	    return multiplayerManager.startMultiGame(username, numPlayers, level);
-	}
+    @Override
+    public String checkWord(String word) throws RemoteException {
+        try {
+            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
+            boolean exists = wordRepo.checkWord(word);
+            return exists ? "Word exists in the repository." : "Word does not exist in the repository.";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error while checking word: " + e.getMessage();
+        }
+    }
 
-	// @Override
-	// public synchronized String joinMultiGame(String player, String gameId)
-	//         throws RemoteException, RejectedException {
-	//     // Delegate to the multiplayerManager instance.
-	//     return multiplayerManager.joinMultiGame(player, gameId);
-	// }
+    @Override
+    public synchronized String startMultiGame(String username, int numPlayers, int level)
+            throws RemoteException, RejectedException {
+        return multiplayerManager.startMultiGame(username, numPlayers, level);
+    }
 
-	// @Override
-	// public List<String> getActiveGames() throws RemoteException {
-	// 	// TODO Auto-generated method stub
-	// 	return null;
-	// }
+    @Override
+    public synchronized String joinMultiGame(String player, int gameId)
+            throws RemoteException, RejectedException {
+        // Delegate to the multiplayerManager instance.
+        return multiplayerManager.joinMultiGame(player, gameId);
+    }
+
+    @Override
+    public String showActiveGameRooms() throws RemoteException {
+        return multiplayerManager.showActiveGameRooms();
+    }
 }

@@ -2,6 +2,7 @@ import java.rmi.RemoteException;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class Multiplayer {
     private Map<Integer, GameRoom> gameRooms; // Stores active game rooms
@@ -25,7 +26,6 @@ public class Multiplayer {
         GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host);
         gameRooms.put(gameId, gameRoom);
         hostGameMap.put(host, gameId);
-        gameRoom.addPlayer(host);
         System.out.println("Game room created: Game ID = " + gameId + " by " + host);
         return gameId;
     }
@@ -81,5 +81,30 @@ public class Multiplayer {
     private int generateGameId() {
         int gameId = 1000 + gameIdCounter.getAndIncrement();
         return gameId;
+    }
+
+    public synchronized String showActiveGameRooms() {
+        StringBuilder info = new StringBuilder();
+        info.append("=====      Active Game Rooms     =====\n");
+
+        boolean hasActiveGames = false;
+
+        for (GameRoom game : gameRooms.values()) {
+            if (!game.isStarted()) {
+                hasActiveGames = true;
+                info.append("Game ID: ").append(game.getGameId()).append("\n")
+                        .append("Host: ").append(game.getHost()).append("\n")
+                        .append("Players Joined: ").append(game.getPlayerCount()).append("/")
+                        .append(game.getTotalPlayers()).append("\n")
+                        .append("Waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n")
+                        .append("------------------------------------------\n");
+            }
+        }
+
+        if (!hasActiveGames) {
+            info.append("No active game rooms available.\n");
+        }
+
+        return info.toString();
     }
 }

@@ -2,6 +2,7 @@
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.List;
+import java.util.Map;
 
 public interface CrissCrossPuzzleServer extends Remote {
 
@@ -26,7 +27,7 @@ public interface CrissCrossPuzzleServer extends Remote {
 
 	String startMultiGame(String username, int numPlayers, int level) throws RemoteException, RejectedException;
 
-	// String joinMultiGame(String player, String gameId) throws RemoteException, RejectedException;
+	String joinMultiGame(String player, int gameId) throws RemoteException, RejectedException;
 
-	// List<String> getActiveGames() throws RemoteException;
+	public String showActiveGameRooms() throws RemoteException;
 }

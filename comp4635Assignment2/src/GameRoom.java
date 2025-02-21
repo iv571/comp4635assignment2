@@ -27,9 +27,10 @@ public class GameRoom {
     }
 
     public void startGame() {
-        if (!isStarted) {
+        if (!isStarted && players.size() == numPlayers) {
             isStarted = true;
-            System.out.println("Game " + gameId + " has started.");
+            System.out.println("Game " + gameId + " has started. Starting the word puzzle...");
+            // Start the word puzzle when the game begins here
         }
     }
 
@@ -45,6 +46,18 @@ public class GameRoom {
         return players.size();
     }
 
+    public int getGameId() {
+        return this.gameId;
+    }
+
+    public String getHost() {
+        return this.host;
+    }
+
+    public int getTotalPlayers() {
+        return this.numPlayers;
+    }
+
     private static class Player {
         private String name;
         private int currentFailedAttempts;
@@ -55,12 +68,6 @@ public class GameRoom {
             this.name = name;
             this.currentFailedAttempts = 0;
             this.score = 0;
-        }
-
-        public void incrementFailedAttempts() {
-            if (currentFailedAttempts < TOTAL_FAILED_ATTEMPTS) {
-                currentFailedAttempts++;
-            }
         }
 
         public void increaseScore() {
