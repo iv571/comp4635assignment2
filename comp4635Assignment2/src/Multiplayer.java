@@ -54,18 +54,24 @@ public class Multiplayer {
             return "Game room is full. Cannot join.";
         }
 
+        StringBuilder response = new StringBuilder();
+        response.append("You have successfully joined Game ID ").append(gameId).append(".\n");
+
         // Start countdown only when the second player joins
-        if (game.getPlayerCount() > 1) {
+        if (game.getPlayerCount() > 1 && game.getRemainingSpot() > 0) {
             System.out.println("Starting auto-start timer for game " + gameId);
             scheduleAutoStart(gameId);
+            response.append("The game will auto-start in 1 minute if not all players join.\n");
         }
 
         if (game.getRemainingSpot() > 0) {
-            return "Still waiting for " + game.getRemainingSpot() + " more players to join...";
+            response.append("Still waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n");
         } else {
             game.startGame();
-            return "***** All players joined! The game is now started *****\n";
+            response.append("***** All players joined! The game is now started *****\n");
         }
+
+        return response.toString();
     }
 
     private void scheduleAutoStart(int gameId) {
