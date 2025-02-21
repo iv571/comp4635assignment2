@@ -5,6 +5,7 @@ public class GameRoom {
     private int gameId;
     private int numPlayers;
     private int gameLevel;
+    private boolean isStarted;
     private String host;
     private List<Player> players;
 
@@ -12,6 +13,7 @@ public class GameRoom {
         this.gameId = gameId;
         this.numPlayers = numPlayers;
         this.gameLevel = gameLevel;
+        this.isStarted = false;
         this.host = host;
         this.players = new ArrayList<>();
     }
@@ -22,6 +24,25 @@ public class GameRoom {
             return true;
         }
         return false;
+    }
+
+    public void startGame() {
+        if (!isStarted) {
+            isStarted = true;
+            System.out.println("Game " + gameId + " has started.");
+        }
+    }
+
+    public boolean isStarted() {
+        return this.isStarted;
+    }
+
+    public int getRemainingSpot() {
+        return this.numPlayers - this.players.size();
+    }
+
+    public int getPlayerCount() {
+        return players.size();
     }
 
     private static class Player {
@@ -47,4 +68,3 @@ public class GameRoom {
         }
     }
 }
-
