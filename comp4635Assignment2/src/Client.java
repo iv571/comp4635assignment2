@@ -40,7 +40,7 @@ public class Client {
 
         try {
             // Look up the remote puzzle server object using the provided URL.
-        	CrissCrossPuzzleServer puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
+        	puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
             // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
 
