@@ -14,6 +14,7 @@ public class Client {
     UserAccountServer accountServer;
     WordRepositoryServer wordServer;
     private String serverUrl;
+    private ClientCallback clientCallback;
     String clientname;
     String username = " ";
 
@@ -43,6 +44,7 @@ public class Client {
         try {
             // Look up the remote puzzle server object using the provided URL.
             puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
+            clientCallback = new ClientImpl();
             // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
 
@@ -272,7 +274,7 @@ public class Client {
 
                     int gameId = Integer.parseInt(command.param1);
                     // Call remote method to start a multi-player game.
-                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId);
+                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
                     System.out.println(joinMPResponse);
                     break;
 

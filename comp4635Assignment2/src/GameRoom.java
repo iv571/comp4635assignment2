@@ -1,5 +1,8 @@
+import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameRoom {
     private int gameId;
@@ -8,6 +11,7 @@ public class GameRoom {
     private boolean isStarted;
     private String host;
     private List<Player> players;
+    private Map<String, ClientCallback> playerCallbacks;
 
     public GameRoom(int gameId, int numPlayers, int gameLevel, String host) {
         this.gameId = gameId;
@@ -16,11 +20,14 @@ public class GameRoom {
         this.isStarted = false;
         this.host = host;
         this.players = new ArrayList<>();
+        this.playerCallbacks = new HashMap<>();
     }
 
-    public boolean addPlayer(String playerName) {
+    public boolean addPlayer(String playerName, ClientCallback callback) {
         if (players.size() < numPlayers) {
-            players.add(new Player(playerName));
+            Player player = new Player(playerName); // Declare the player variable
+            players.add(player);
+            playerCallbacks.put(playerName, callback); // Use playerName as the key for the callback
             return true;
         }
         return false;
@@ -31,6 +38,22 @@ public class GameRoom {
             isStarted = true;
             System.out.println("Game " + gameId + " has started. Starting the word puzzle...");
             // Start the word puzzle when the game begins here
+        }
+    }
+
+    public void broadcastMessage(String message) {
+        for (Map.Entry<String, ClientCallback> entry : playerCallbacks.entrySet()) {
+            String playerName = entry.getKey();
+            ClientCallback callback = entry.getValue();
+            if (callback == null) {
+                System.err.println("Callback for player " + playerName + " is null.");
+                continue; // Skip broadcasting to this player
+            }
+            try {
+                callback.receiveMessage(message);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 

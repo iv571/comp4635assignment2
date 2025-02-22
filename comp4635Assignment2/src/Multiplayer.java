@@ -40,7 +40,8 @@ public class Multiplayer {
         }
     }
 
-    public synchronized String joinMultiGame(String player, int gameId) throws RemoteException {
+    public synchronized String joinMultiGame(String player, int gameId, ClientCallback callback)
+            throws RemoteException {
         GameRoom game = gameRooms.get(gameId);
         if (game == null) {
             return "No game room found with ID " + gameId;
@@ -49,13 +50,16 @@ public class Multiplayer {
             return "Game " + gameId + " has already started. You cannot join now.";
         }
 
-        boolean added = game.addPlayer(player);
+        boolean added = game.addPlayer(player, callback);
         if (!added) {
             return "Game room is full. Cannot join.";
         }
 
         StringBuilder response = new StringBuilder();
         response.append("You have successfully joined Game ID ").append(gameId).append(".\n");
+
+        // Broadcast the message to all players that a new player has joined
+        game.broadcastMessage(player + " has joined the game!");
 
         // Start countdown only when the second player joins
         if (game.getPlayerCount() > 1 && game.getRemainingSpot() > 0) {
@@ -66,9 +70,11 @@ public class Multiplayer {
 
         if (game.getRemainingSpot() > 0) {
             response.append("Still waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n");
+            game.broadcastMessage("Still waiting for " + game.getRemainingSpot() + " more players to join...\n");
         } else {
             game.startGame();
             response.append("***** All players joined! The game is now started *****\n");
+            game.broadcastMessage("***** All players joined! The game is now started *****\n");
         }
 
         return response.toString();
