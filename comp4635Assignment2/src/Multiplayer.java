@@ -40,6 +40,7 @@ public class Multiplayer {
         }
     }
 
+    // joinMultiGame(player_name, ...., .....)
     public synchronized String joinMultiGame(String player, int gameId, ClientCallback callback)
             throws RemoteException {
         GameRoom game = gameRooms.get(gameId);
@@ -65,6 +66,7 @@ public class Multiplayer {
         if (game.getPlayerCount() > 1 && game.getRemainingSpot() > 0) {
             System.out.println("Starting auto-start timer for game " + gameId);
             scheduleAutoStart(gameId);
+            game.broadcastMessage("The game will auto-start in 1 minute if not all players join.\n");
             response.append("The game will auto-start in 1 minute if not all players join.\n");
         }
 
@@ -84,11 +86,12 @@ public class Multiplayer {
         scheduler.schedule(() -> {
             GameRoom game = gameRooms.get(gameId);
             if (game != null && !game.isStarted()) {
+                game.startGame(); // Ensure the game state is updated
+                game.broadcastMessage("***** Time is up! Auto-starting game " + gameId + " now! *****");
                 System.out.println("***** Time is up! Auto-starting game " + gameId + " now! *****");
-                game.startGame();
             }
         }, 1, TimeUnit.MINUTES);
-    }
+    }    
 
     private int generateGameId() {
         int gameId = 1000 + gameIdCounter.getAndIncrement();

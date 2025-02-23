@@ -33,11 +33,11 @@ public class GameRoom {
         return false;
     }
 
-    public void startGame() {
-        if (!isStarted && players.size() == numPlayers) {
+    public synchronized void startGame() {
+        if (!isStarted) {
             isStarted = true;
             System.out.println("Game " + gameId + " has started. Starting the word puzzle...");
-            // Start the word puzzle when the game begins here
+            // Additional logic for starting the game
         }
     }
 
