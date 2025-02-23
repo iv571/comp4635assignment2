@@ -62,7 +62,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     private String getConstrainedRandomWord(char constraint, int minLength, int verticalStemLength, int colForStem) {
         List<String> validWords = new ArrayList<>();
         char lowerConstraint = Character.toLowerCase(constraint);
-        int numCols = verticalStemLength + 4; // Calculate numCols based on vertical stem + padding
+        int numCols = verticalStemLength; // Calculate numCols based on vertical stem + padding
 
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
             String line;
@@ -110,7 +110,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     private char[][] constructPuzzle(String verticalStem, String[] horizontalWords) {
         int numRows = verticalStem.length();
-        int padding = 4;
+        
         // Compute the longest word length among verticalStem and horizontalWords.
         int maxWordLength = verticalStem.length();
         for (String word : horizontalWords) {
@@ -119,7 +119,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             }
         }
 
-        int numCols = maxWordLength + padding;
+        int numCols = maxWordLength;
         char[][] grid = new char[numRows][numCols];
         for (int i = 0; i < numRows; i++) {
             Arrays.fill(grid[i], '.');
@@ -202,7 +202,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         session.verticalStem = candidate.toLowerCase();
         // The vertical stem length is the full length of the candidate.
         int verticalStemLength = candidate.length();
-        int numCols = verticalStemLength + 4;
+        int numCols = verticalStemLength;
         int colForStem = numCols / 2;
         // Create an array for horizontal words of size 'effectiveLevel'.
         // (This means we generate horizontal words only for rows 1 ..
