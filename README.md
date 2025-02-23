@@ -122,10 +122,10 @@ Welcome to the COMP-4635 Assignment 2 repository. This document outlines the gam
   joinmultiplayer [gameId]
   ```
 
-- **Exit the Game**  
+- **Quit the Game**  
   *Command:*  
   ```bash
-  exit
+  quit
   ```
 
 ---
