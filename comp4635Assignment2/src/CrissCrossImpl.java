@@ -185,8 +185,27 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return sb.toString();
     }
 
+ // Helper methods to synchronize access to sessions.
+    private void putSession(String player, GameSession session) {
+        synchronized (sessions) {
+            sessions.put(player, session);
+        }
+    }
+
+    private GameSession getSession(String player) {
+        synchronized (sessions) {
+            return sessions.get(player);
+        }
+    }
+
+    private void removeSession(String player) {
+        synchronized (sessions) {
+            sessions.remove(player);
+        }
+    }
+
     @Override
-    public synchronized String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
+    public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
         // Clamp the level between 1 and 10.
         int effectiveLevel = Math.max(1, Math.min(level, 10));
         // effectiveLevel now controls the number of horizontal words generated.
@@ -205,40 +224,39 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int numCols = verticalStemLength;
         int colForStem = numCols / 2;
         // Create an array for horizontal words of size 'effectiveLevel'.
-        // (This means we generate horizontal words only for rows 1 ..
-        // effectiveLevel-1.)
+        // (This means we generate horizontal words only for rows 1 .. effectiveLevel-1.)
         session.horizontalWords = new String[effectiveLevel];
         Arrays.fill(session.horizontalWords, "");
         for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
             String hWord;
             do {
-                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength,
-                        colForStem);
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength, colForStem);
             } while (hWord.isEmpty());
             session.horizontalWords[i] = hWord.toLowerCase();
         }
 
-        // Construct the puzzle grid using the entire vertical stem (all its
-        // characters).
+        // Construct the puzzle grid using the entire vertical stem (all its characters).
         session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
         int numLetters = countPuzzleLetters(session.puzzle);
         session.failAttempts = failedAttemptFactor * numLetters;
 
         session.formattedPuzzle = formatPuzzle(session.puzzle);
         session.revealedPuzzle = revealPuzzle(session.puzzle);
-        sessions.put(player, session);
+        
+        // Only the update to the sessions map is synchronized.
+        putSession(player, session);
 
         System.out.println("Completed puzzle on server:");
         System.out.println(session.revealedPuzzle);
 
         return "Game started for " + player + "!\n" +
-                session.formattedPuzzle +
-                "\nAttempts allowed: " + session.failAttempts;
+               session.formattedPuzzle +
+               "\nAttempts allowed: " + session.failAttempts;
     }
 
     @Override
-    public synchronized String guessLetter(String player, char letter) throws RemoteException {
-        GameSession session = sessions.get(player);
+    public String guessLetter(String player, char letter) throws RemoteException {
+        GameSession session = getSession(player);
         if (session == null) {
             return "No active game session for " + player + ".";
         }
@@ -263,13 +281,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sessions.remove(player);
+                removeSession(player);
                 return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
             }
         }
         session.formattedPuzzle = new String(formattedChars);
         if (!session.formattedPuzzle.contains("_")) {
-            sessions.remove(player);
+            removeSession(player);
             // After a win, update the score by +1:
             try {
                 Registry registry = LocateRegistry.getRegistry("localhost", 1099);
@@ -281,12 +299,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
         }
         return "Current puzzle state:\n" + session.formattedPuzzle +
-                "\nAttempts remaining: " + session.failAttempts;
+               "\nAttempts remaining: " + session.failAttempts;
     }
 
     @Override
-    public synchronized String guessWord(String player, String word) throws RemoteException {
-        GameSession session = sessions.get(player);
+    public String guessWord(String player, String word) throws RemoteException {
+        GameSession session = getSession(player);
         if (session == null) {
             return "No active game session for " + player + ".";
         }
@@ -298,7 +316,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int colForStem = gridWidth / 2;
 
         // We'll use the delimiter "\n" for splitting and joining rows.
-        // (You can adjust your formatPuzzle method accordingly if desired.)
         String[] rows = session.formattedPuzzle.split("\\+\\n");
 
         if (lowerWord.equals(session.verticalStem.toLowerCase())) {
@@ -326,15 +343,14 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                     int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
                     if (constraintIndex == -1)
                         continue;
-                    // Compute the starting column for the horizontal word
+                    // Compute the starting column for the horizontal word.
                     int startCol = colForStem - constraintIndex;
                     startCol = Math.max(0, Math.min(startCol, gridWidth - hWord.length()));
                     // Make sure we have the correct row from the formatted puzzle.
                     if (i >= rows.length)
                         continue;
                     char[] rowChars = rows[i].toCharArray();
-                    // Reveal only the segment corresponding to the horizontal word by copying
-                    // the actual letters from the underlying puzzle.
+                    // Reveal only the segment corresponding to the horizontal word.
                     for (int j = 0; j < hWord.length() && (startCol + j) < gridWidth; j++) {
                         rowChars[startCol + j] = session.puzzle[i][startCol + j];
                     }
@@ -350,7 +366,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         if (wordFound) {
             // If there are no underscores left, the puzzle is complete.
             if (!session.formattedPuzzle.contains("_")) {
-                sessions.remove(player);
+                removeSession(player);
                 // After a win, update the score by +1.
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
@@ -362,7 +378,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
             }
             return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
-                    "\nAttempts remaining: " + session.failAttempts;
+                   "\nAttempts remaining: " + session.failAttempts;
         } else {
             session.failAttempts--;
             if (session.failAttempts <= 0) {
@@ -373,11 +389,10 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sessions.remove(player);
+                removeSession(player);
                 return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
             }
-            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: "
-                    + session.failAttempts;
+            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " + session.failAttempts;
         }
     }
 

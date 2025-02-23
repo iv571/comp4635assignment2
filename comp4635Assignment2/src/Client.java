@@ -238,19 +238,42 @@ public class Client {
                     System.out.println(restartResponse);
                     break;
                 case add:
-                    // Call the remote method directly on wordServer.
-                    boolean addSuccess = wordServer.createWord(command.param1);
-                    System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
+                	try {
+                        // Call the remote method directly on wordServer.
+                        boolean addSuccess = wordServer.createWord(command.param1);
+                        System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
+                    } catch (RemoteException re) {
+                        if (re.getMessage().contains("Connection refused")) {
+                            System.out.println("Unable to add word: The connection to the word server was refused. Please check your network or try again later.");
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
                     break;
 
                 case remove:
-                    boolean removeSuccess = wordServer.removeWord(command.param1);
-                    System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
+                	try {
+                        boolean removeSuccess = wordServer.removeWord(command.param1);
+                        System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
+                    } catch (RemoteException re) {
+                        if (re.getMessage().contains("Connection refused")) {
+                            System.out.println("Unable to remove word: The connection to the word server was refused. Please check your network or try again later.");
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
                     break;
                 case check:
-                    boolean exists = wordServer.checkWord(command.param1);
-                    System.out.println(
-                            exists ? "Word exists in the repository." : "Word does not exist in the repository.");
+                	try {
+                        boolean exists = wordServer.checkWord(command.param1);
+                        System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
+                    } catch (RemoteException re) {
+                        if (re.getMessage().contains("Connection refused")) {
+                            System.out.println("Unable to check word: The connection to the word server was refused. Please check your network or try again later.");
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
                     break;
                 case startmultiplayer:
                     // Expected usage: startmultiplayer <numPlayers> <level>
@@ -379,26 +402,30 @@ public class Client {
         System.out.println(border);
         System.out.println("|                          CRISS CROSS PUZZLE                                 |");
         System.out.println(border);
-        System.out.println("| Commands:                                                                   |");
         System.out.println("|                                                                             |");
         System.out.println("|                         MULTI-PLAYER MODE                                   |");
+        System.out.println("|                                                                             |");
         System.out.println("|   startmultiplayer <numPlayers> <level>        - Start a multi-player game  |");
         System.out.println("|   joinmultiplayer <gameId>                     - Join a multi-player game   |");
         System.out.println("|   showactivegames                              - Show all active game rooms |");
-        System.out.println("|-----------------------------------------------------------------------------|");
+        System.out.println("|                                                                             |");
+        System.out.println(border);
+        System.out.println("|                                                                             |");
         System.out.println("|                         SINGLE-PLAYER MODE                                  |");
+        System.out.println("|                                                                             |");
         System.out.println("|   start <numberOfWords> <failedAttemptFactor>  - Start a new game           |");
-        System.out.println("|   letter <character>                         - Guess a letter               |");
-        System.out.println("|   word <word>                                - Guess a word                 |");
-        System.out.println("|   end                                        - End the current game         |");
-        System.out.println("|   restart                                    - Restart the game             |");
-        System.out.println("|   add <word>                                 - Add a new word               |");
-        System.out.println("|   remove <word>                              - Remove a word                |");
-        System.out.println("|   check <word>                               - Check word existence         |");
-        System.out.println("|   score                                      - Get your user score          |");
-        System.out.println("|   scoreboard                                 - Get the scoreboard           |");
-        System.out.println("|   help                                       - Display this help            |");
-        System.out.println("|   quit                                       - Exit the client              |");
+        System.out.println("|   letter <character>                           - Guess a letter             |");
+        System.out.println("|   word <word>                                  - Guess a word               |");
+        System.out.println("|   end                                          - End the current game       |");
+        System.out.println("|   restart                                      - Restart the game           |");
+        System.out.println("|   add <word>                                   - Add a new word             |");
+        System.out.println("|   remove <word>                                - Remove a word              |");
+        System.out.println("|   check <word>                                 - Check word existence       |");
+        System.out.println("|   score                                        - Get your user score        |");
+        System.out.println("|   scoreboard                                   - Get the scoreboard         |");
+        System.out.println("|   help                                         - Display this help          |");
+        System.out.println("|   quit                                         - Exit the client            |");
+        System.out.println("|                                                                             |");
         System.out.println(border);
     }
 

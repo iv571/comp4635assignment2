@@ -120,10 +120,10 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
         try {
             // Create or get the registry on port 1099.
         	try {
-        	    java.rmi.registry.LocateRegistry.getRegistry(1100).list();
+        	    java.rmi.registry.LocateRegistry.getRegistry(1099).list();
         	} catch (Exception e) {
         	    // If the registry doesn't exist, create it.
-        	    java.rmi.registry.LocateRegistry.createRegistry(1100);
+        	    java.rmi.registry.LocateRegistry.createRegistry(1099);
         	}
             // Create an instance of the repository implementation.
             WordRepositoryImpl wordServer = new WordRepositoryImpl();
