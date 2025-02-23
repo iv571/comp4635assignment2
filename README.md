@@ -1,35 +1,139 @@
-COMP-4635 Assignment 1
+# **COMP-4635 Assignment 2**
 
-GAME INSTRUCTIONS
+Welcome to the COMP-4635 Assignment 2 repository. This document outlines the game instructions, including both manual and scripted server startups, as well as additional commands to interact with the game.
 
-Step 1 Start the Game Server: java GameServer 5599
+---
 
-Step 2 Start the Client: java Client localhost 5599 "test"
+## **Table of Contents**
 
-Step 3 Press Enter to start
+- [Game Instructions](#game-instructions)
+  - [Option A: Manual Start](#option-a-manual-start)
+  - [Option B: Orchestration Script](#option-b-orchestration-script)
+- [Additional Commands](#additional-commands)
+- [Shortcuts (After Starting Criss Cross Puzzle)](#shortcuts-after-starting-criss-cross-puzzle)
 
-Step 4 Create an account using the command create [username] [password]
+---
 
-Login to the account using the command login [username] [password]
+## **Game Instructions**
 
-Step 5
+### **Option A: Manual Start**
 
-Start the game using command start [level] [failed attempts factor]
+1. **Start the Game Server**  
+   *Command:*  
+   ```bash
+   java GameServer test
+   ```
 
-Add a word using command add [word]
+2. **Start the Word Server**  
+   *Command:*  
+   ```bash
+   java WordRepositoryImpl
+   ```
 
-Remove a word using command remove [word]
+3. **Start the Account Server**  
+   *Command:*  
+   ```bash
+   java UserAccountImpl
+   ```
 
-Check a word using command check [word]
+4. **Start the Client**  
+   *Command:*  
+   ```bash
+   java Client rmi://localhost:1099/GameServer test
+   ```
 
-Check score using command check score
+5. **Create an Account**  
+   *Command:*  
+   ```bash
+   create [username] [password]
+   ```
 
-Exit the game using command exit
+6. **Login to the Account**  
+   *Command:*  
+   ```bash
+   login [username] [password]
+   ```
 
-Shortcuts after starting criss cross puzzle
+7. **Start the Game**  
+   *Command:*  
+   ```bash
+   start [level] [failed attempts factor]
+   ```
 
-$ - display score
+---
 
-! - Start new game
+### **Option B: Orchestration Script**
 
-\# - End the game
+1. **Run the Powershell Orchestration Script**  
+   *Command:*  
+   ```powershell
+   .\startServers.ps1
+   ```
+
+2. **Start the Client**  
+   *Command:*  
+   ```bash
+   java Client rmi://localhost:1099/GameServer test
+   ```
+
+---
+
+## **Additional Commands**
+
+- **Add a Word**  
+  *Command:*  
+  ```bash
+  add [word]
+  ```
+
+- **Remove a Word**  
+  *Command:*  
+  ```bash
+  remove [word]
+  ```
+
+- **Check a Word**  
+  *Command:*  
+  ```bash
+  check [word]
+  ```
+
+- **Check Score**  
+  *Command:*  
+  ```bash
+  check score
+  ```
+
+- **Check Scoreboard**  
+  *Command:*  
+  ```bash
+  scoreboard
+  ```
+
+- **Start a Multiplayer Game**  
+  *Command:*  
+  ```bash
+  startmultiplayer [numberOfPlayers] [level]
+  ```
+
+- **Join a Multiplayer Game**  
+  *Command:*  
+  ```bash
+  joinmultiplayer [gameId]
+  ```
+
+- **Quit the Game**  
+  *Command:*  
+  ```bash
+  quit
+  ```
+
+---
+
+## **Shortcuts (After Starting Criss Cross Puzzle)**
+
+- **`$`** : Display Score
+- **`!`** : Start New Game
+- **`#`** : End the Game
+
+---
