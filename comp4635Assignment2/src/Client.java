@@ -286,66 +286,51 @@ public class Client {
                     System.out.println(restartResponse);
                     break;
                 case add:
-                	 try {
-                	        boolean addSuccess = wordServer.createWord(command.param1);
-                	        System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
-                	    } catch (RemoteException re) {
-                	        if (re.getMessage().contains("Connection refused")) {
-                	            System.out.println("Connection to the word server was lost. Attempting to reconnect...");
-                	            reconnectWordServer();
-                	            try {
-                	                boolean addSuccess = wordServer.createWord(command.param1);
-                	                System.out.println(addSuccess ? "Word added successfully." : "Failed to add word.");
-                	            } catch (RemoteException re2) {
-                	                if (re2.getMessage().contains("Connection refused")) {
-                	                    System.out.println("The word server is currently unavailable. Please try again later.");
-                	                } else {
-                	                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
-                	                }
-                	            }
-                	        } else {
-                	            System.out.println("Remote error: " + re.getMessage());
-                	        }
-                	    }
-                	    break;
-                case remove:
-                	  try {
-                	        boolean removeSuccess = wordServer.removeWord(command.param1);
-                	        System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
-                	    } catch (RemoteException re) {
-                	        if (re.getMessage().contains("Connection refused")) {
-                	            System.out.println("Connection to the word server was lost. Attempting to reconnect...");
-                	            reconnectWordServer();
-                	            try {
-                	                boolean removeSuccess = wordServer.removeWord(command.param1);
-                	                System.out.println(removeSuccess ? "Word removed successfully." : "Failed to remove word.");
-                	            } catch (RemoteException re2) {
-                	                if (re2.getMessage().contains("Connection refused")) {
-                	                    System.out.println("The word server is currently unavailable. Please try again later.");
-                	                } else {
-                	                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
-                	                }
-                	            }
-                	        } else {
-                	            System.out.println("Remote error: " + re.getMessage());
-                	        }
-                	    }
-                	    break;
-                case check:
-                	try {
-                        boolean exists = wordServer.checkWord(command.param1);
-                        System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
+                    try {
+                        boolean addSuccess = puzzleServer.addWord(command.param1);
+                        System.out.println(addSuccess
+                                ? "Word added successfully."
+                                : "Failed to add word.");
                     } catch (RemoteException re) {
-                        if (re.getMessage().contains("Connection refused")) {
-                            System.out.println("Connection to the word server was lost. Attempting to reconnect...");
-                            reconnectWordServer();
-                            try {
-                                boolean exists = wordServer.checkWord(command.param1);
-                                System.out.println(exists ? "Word exists in the repository." : "Word does not exist in the repository.");
-                            } catch (RemoteException re2) {
-                                if (re2.getMessage().contains("Connection refused")) {
-                                    System.out.println("The word server is currently unavailable. Please try again later.");
-                                } else {
+                        // Check if the error message indicates the PuzzleServer is offline
+                        if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
+                            System.out.println("Connection to PuzzleServer refused. Attempting to reconnect...");
+                            reconnectPuzzleServer();
+                            // After reconnect attempt, retry once
+                            if (puzzleServer != null) {
+                                try {
+                                    boolean addSuccess = puzzleServer.addWord(command.param1);
+                                    System.out.println(addSuccess
+                                            ? "Word added successfully."
+                                            : "Failed to add word.");
+                                } catch (RemoteException re2) {
+                                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
+                                }
+                            }
+                        } else {
+                            // Different remote error
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
+                    break;
+
+                case remove:
+                    try {
+                        boolean removeSuccess = puzzleServer.removeWord(command.param1);
+                        System.out.println(removeSuccess
+                                ? "Word removed successfully."
+                                : "Failed to remove word.");
+                    } catch (RemoteException re) {
+                        if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
+                            System.out.println("Connection to PuzzleServer refused. Attempting to reconnect...");
+                            reconnectPuzzleServer();
+                            if (puzzleServer != null) {
+                                try {
+                                    boolean removeSuccess = puzzleServer.removeWord(command.param1);
+                                    System.out.println(removeSuccess
+                                            ? "Word removed successfully."
+                                            : "Failed to remove word.");
+                                } catch (RemoteException re2) {
                                     System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
                                 }
                             }
@@ -354,6 +339,33 @@ public class Client {
                         }
                     }
                     break;
+
+                case check:
+                    try {
+                        boolean exists = puzzleServer.checkWord(command.param1);
+                        System.out.println(exists
+                                ? "Word exists in the repository."
+                                : "Word does not exist in the repository.");
+                    } catch (RemoteException re) {
+                        if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
+                            System.out.println("Connection to PuzzleServer refused. Attempting to reconnect...");
+                            reconnectPuzzleServer();
+                            if (puzzleServer != null) {
+                                try {
+                                    boolean exists = puzzleServer.checkWord(command.param1);
+                                    System.out.println(exists
+                                            ? "Word exists in the repository."
+                                            : "Word does not exist in the repository.");
+                                } catch (RemoteException re2) {
+                                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
+                                }
+                            }
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
+                    break;
+
                 case startmultiplayer:
                     // Expected usage: startmultiplayer <numPlayers> <level>
                     if (command.param1 == null || command.param2 == null) {
@@ -529,7 +541,15 @@ public class Client {
     }
 
     
-    
+    private void reconnectPuzzleServer() {
+        try {
+            puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
+            System.out.println("Reconnected to PuzzleServer at " + serverUrl);
+        } catch (Exception e) {
+            System.out.println("Reconnection to PuzzleServer failed: " + e.getMessage());
+            puzzleServer = null; // ensure we don't leave a bad reference
+        }
+    }
 
     public static void main(String[] args) {
         if (args.length != 2) {

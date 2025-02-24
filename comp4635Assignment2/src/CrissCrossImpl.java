@@ -2,6 +2,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -20,12 +21,16 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     // Map to hold a game session for each player
     private Map<String, GameSession> sessions = new ConcurrentHashMap<>();
+    
+ // Reference to the WordRepository
+    private WordRepositoryServer wordServer;
 
     // multiplayer manager
     private Multiplayer multiplayerManager = new Multiplayer();
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
+        connectToWordRepository(); 
     }
 
     // Inner class to represent a game session per player.
@@ -38,6 +43,124 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int failAttempts;
         // Additional game state (e.g., score) could be added here.
     }
+    
+    /**
+     * Initial connection to the WordRepositoryServer.
+     */
+    private void connectToWordRepository() {
+        try {
+            wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
+            System.out.println("Connected to WordRepositoryServer in CrissCrossImpl.");
+        } catch (Exception e) {
+            System.err.println("Failed to connect to WordRepositoryServer: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Attempt to reconnect to the WordRepositoryServer with multiple retries.
+     */
+    private void reconnectWordRepository() {
+        int maxAttempts = 3;
+        int attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                System.out.println("Attempting to reconnect to WordRepositoryServer (attempt " 
+                                   + (attempt + 1) + " of " + maxAttempts + ")...");
+                // Wait a bit before retrying
+                Thread.sleep(1000);
+                wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
+                System.out.println("Reconnecting to WordRepositoryServer in CrissCrossImpl.");
+                return;
+            } catch (Exception e) {
+                System.err.println("Reconnection attempt " + (attempt + 1) + " failed: " + e.getMessage());
+            }
+            attempt++;
+        }
+        // If all attempts fail, clear the reference.
+        wordServer = null;
+    }
+    // ===============================
+    // Implementation of word commands
+    // ===============================
+
+    @Override
+    public boolean addWord(String word) throws RemoteException {
+        if (wordServer == null) {
+            // Attempt an initial or lazy connect
+            connectToWordRepository();
+            if (wordServer == null) {
+                throw new RemoteException("WordRepositoryServer is not available.");
+            }
+        }
+        try {
+            return wordServer.createWord(word);
+        } catch (RemoteException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
+                System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
+                reconnectWordRepository();
+                if (wordServer == null) {
+                    throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
+                }
+                // Retry once after reconnecting
+                return wordServer.createWord(word);
+            } else {
+                throw e; // Some other remote error
+            }
+        }
+    }
+
+    @Override
+    public boolean removeWord(String word) throws RemoteException {
+        if (wordServer == null) {
+            // Attempt an initial or lazy connect
+            connectToWordRepository();
+            if (wordServer == null) {
+                throw new RemoteException("WordRepositoryServer is not available.");
+            }
+        }
+        try {
+            return wordServer.removeWord(word);
+        } catch (RemoteException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
+                System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
+                reconnectWordRepository();
+                if (wordServer == null) {
+                    throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
+                }
+                // Retry once after reconnecting
+                return wordServer.removeWord(word);
+            } else {
+                throw e; // Some other remote error
+            }
+        }
+    }
+
+    @Override
+    public boolean checkWord(String word) throws RemoteException {
+        if (wordServer == null) {
+            // Attempt an initial or lazy connect
+            connectToWordRepository();
+            if (wordServer == null) {
+                throw new RemoteException("WordRepositoryServer is not available.");
+            }
+        }
+        try {
+            return wordServer.checkWord(word);
+        } catch (RemoteException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
+                System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
+                reconnectWordRepository();
+                if (wordServer == null) {
+                    throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
+                }
+                // Retry once after reconnecting
+                return wordServer.checkWord(word);
+            } else {
+                throw e; // Some other remote error
+            }
+        }
+    }
+
 
     private String getRandomWordFromFile(int minLength) {
         List<String> words = new ArrayList<>();
@@ -412,47 +535,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return startGame(player, 5, 3);
     }
 
-    @Override
-    public String addWord(String word) throws RemoteException {
-        try {
-            // Obtain the registry on localhost at port 1099.
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            // Look up the remote object using its bound name.
-            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
-            // Call the remote method to create the word.
-            boolean success = wordRepo.createWord(word);
-            return success ? "Word added successfully." : "Failed to add word.";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error while adding word: " + e.getMessage();
-        }
-    }
-
-    @Override
-    public String removeWord(String word) throws RemoteException {
-        try {
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
-            boolean success = wordRepo.removeWord(word);
-            return success ? "Word removed successfully." : "Failed to remove word.";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error while removing word: " + e.getMessage();
-        }
-    }
-
-    @Override
-    public String checkWord(String word) throws RemoteException {
-        try {
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            WordRepositoryServer wordRepo = (WordRepositoryServer) registry.lookup("WordRepositoryServer");
-            boolean exists = wordRepo.checkWord(word);
-            return exists ? "Word exists in the repository." : "Word does not exist in the repository.";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error while checking word: " + e.getMessage();
-        }
-    }
 
     @Override
     public synchronized String startMultiGame(String username, int numPlayers, int level)
