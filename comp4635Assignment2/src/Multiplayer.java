@@ -21,7 +21,9 @@ public class Multiplayer {
         if (hostGameMap.containsKey(host)) {
             throw new RemoteException("Host " + host + " has already created a game and cannot create another.");
         }
-
+        if (numPlayers < 2) {
+            throw new RemoteException("At least 2 players required to start multiplayer mode.\n");
+        }
         int gameId = generateGameId();
         GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host);
         gameRooms.put(gameId, gameRoom);
@@ -91,7 +93,7 @@ public class Multiplayer {
                 System.out.println("***** Time is up! Auto-starting game " + gameId + " now! *****");
             }
         }, 1, TimeUnit.MINUTES);
-    }    
+    }
 
     private int generateGameId() {
         int gameId = 1000 + gameIdCounter.getAndIncrement();
