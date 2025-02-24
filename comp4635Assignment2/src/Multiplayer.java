@@ -36,7 +36,7 @@ public class Multiplayer {
         try {
             int newGameId = createGame(host, numPlayers, gameLevel);
             return "Multi-player game created! Game ID = " + newGameId
-                    + "\nWaiting for " + (numPlayers - 1) + " more players to join...";
+                    + "\nWaiting for " + (numPlayers) + " more players to join...";
         } catch (RemoteException e) {
             return "Failed to create game: " + e.getMessage();
         }
@@ -76,8 +76,8 @@ public class Multiplayer {
             response.append("Still waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n");
             game.broadcastMessage("Still waiting for " + game.getRemainingSpot() + " more players to join...\n");
         } else {
+            response.append("***** All players joined! The game is now started *****\n\n");
             game.startGame();
-            response.append("***** All players joined! The game is now started *****\n");
             game.broadcastMessage("***** All players joined! The game is now started *****\n");
         }
 

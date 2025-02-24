@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 public class GameRoom {
     private int gameId;
@@ -25,7 +26,7 @@ public class GameRoom {
 
     public boolean addPlayer(String playerName, ClientCallback callback) {
         if (players.size() < numPlayers) {
-            Player player = new Player(playerName); // Declare the player variable
+            Player player = new Player(playerName);
             players.add(player);
             playerCallbacks.put(playerName, callback); // Use playerName as the key for the callback
             return true;
@@ -36,7 +37,9 @@ public class GameRoom {
     public synchronized void startGame() {
         if (!isStarted) {
             isStarted = true;
-            System.out.println("Game " + gameId + " has started. Starting the word puzzle...");
+
+            // Shuffle order of players
+            shufflePlayers();
             // Additional logic for starting the game
         }
     }
@@ -54,6 +57,27 @@ public class GameRoom {
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public void shufflePlayers() {
+        // Print the order before shuffling
+        System.out.println("Before Shuffle: \n");
+        for (int i = 0; i < players.size(); i++) {
+            System.out.println((i + 1) + ". " + players.get(i).getName());
+        }
+
+        // Shuffle the players list
+        Collections.shuffle(players);
+
+        // Broadcast the message that the players have been shuffled
+        broadcastMessage("The players have been shuffled.");
+
+        // Print the order after shuffling
+        System.out.println("After Shuffle: \n");
+        for (int i = 0; i < players.size(); i++) {
+            System.out.println((i + 1) + ". " + players.get(i).getName());
+            broadcastMessage((i + 1) + ". " + players.get(i).getName());
         }
     }
 
@@ -91,6 +115,10 @@ public class GameRoom {
             this.name = name;
             this.currentFailedAttempts = 0;
             this.score = 0;
+        }
+
+        public String getName() {
+            return this.name;
         }
 
         public void increaseScore() {

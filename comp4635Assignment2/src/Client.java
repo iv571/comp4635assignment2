@@ -389,7 +389,7 @@ public class Client {
                     int gameId = Integer.parseInt(command.param1);
                     // Call remote method to start a multi-player game.
                     String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
-                    System.out.println(joinMPResponse);
+                    // System.out.println(joinMPResponse);
                     break;
 
                 case showactivegames:
