@@ -16,6 +16,8 @@ public class Client {
     private String serverUrl;
     private ClientCallback clientCallback;
     String clientname;
+    private boolean inGame = false;
+    private BufferedReader consoleIn;
     String username = " ";
 
     // Define the commands the client supports.
@@ -40,11 +42,12 @@ public class Client {
     public Client(String serverUrl, String clientName) {
         this.serverUrl = serverUrl;
         this.clientname = clientName;
+        this.consoleIn = new BufferedReader(new InputStreamReader(System.in));
 
         try {
             // Look up the remote puzzle server object using the provided URL.
             puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
-            clientCallback = new ClientImpl();
+            clientCallback = new ClientImpl(this);
             // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
 
@@ -70,116 +73,136 @@ public class Client {
     }
 
     public void run() {
-    	 BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
+        boolean authenticated = false;
+        while (!authenticated) {
+            displayAuthenticationMenu();
+            System.out.print("Auth> ");
+            try {
+                String authInput = consoleIn.readLine();
+                if (authInput == null || authInput.trim().isEmpty()) {
+                    continue;
+                }
+                StringTokenizer st = new StringTokenizer(authInput);
+                String command = st.nextToken().toUpperCase();
+                if (!st.hasMoreTokens()) {
+                    System.out.println("Username required.");
+                    continue;
+                }
+                username = st.nextToken();
+                if (!st.hasMoreTokens()) {
+                    System.out.println("Password required.");
+                    continue;
+                }
+                String password = st.nextToken();
 
-    	    boolean authenticated = false;
-    	    while (!authenticated) {
-    	        displayAuthenticationMenu();
-    	        System.out.print("Auth> ");
-    	        try {
-    	            String authInput = consoleIn.readLine();
-    	            if (authInput == null || authInput.trim().isEmpty()) {
-    	                continue;
-    	            }
-    	            StringTokenizer st = new StringTokenizer(authInput);
-    	            String command = st.nextToken().toUpperCase();
-    	            if (!st.hasMoreTokens()) {
-    	                System.out.println("Username required.");
-    	                continue;
-    	            }
-    	            username = st.nextToken();
-    	            if (!st.hasMoreTokens()) {
-    	                System.out.println("Password required.");
-    	                continue;
-    	            }
-    	            String password = st.nextToken();
+                if (command.equals("CREATE")) {
+                    try {
+                        boolean created = accountServer.createAccount(username, password);
+                        if (created) {
+                            System.out.println("Account created successfully. Please log in.");
+                        } else {
+                            System.out.println("Account already exists. Try logging in.");
+                        }
+                    } catch (RemoteException re) {
+                        if (re.getMessage().contains("Connection refused")) {
+                            System.out.println(
+                                    "Connection to the user account server was lost. Attempting to reconnect...");
+                            reconnectUserAccountServer();
+                            try {
+                                boolean created = accountServer.createAccount(username, password);
+                                if (created) {
+                                    System.out.println("Account created successfully. Please log in.");
+                                } else {
+                                    System.out.println("Account already exists. Try logging in.");
+                                }
+                            } catch (RemoteException re2) {
+                                if (re2.getMessage().contains("Connection refused")) {
+                                    System.out.println(
+                                            "The user account server is currently unavailable. Please try again later.");
+                                } else {
+                                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
+                                }
+                            }
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
+                } else if (command.equals("LOGIN")) {
+                    try {
+                        boolean loggedIn = accountServer.loginAccount(username, password);
+                        if (loggedIn) {
+                            System.out.println("Login successful. Welcome, " + username + "!");
+                            clientname = username; // set the clientname after successful login
+                            authenticated = true;
+                        } else {
+                            System.out.println("Login failed. Please check your credentials and try again.");
+                        }
+                    } catch (RemoteException re) {
+                        if (re.getMessage().contains("Connection refused")) {
+                            System.out.println(
+                                    "Connection to the user account server was lost. Attempting to reconnect...");
+                            reconnectUserAccountServer();
+                            try {
+                                boolean loggedIn = accountServer.loginAccount(username, password);
+                                if (loggedIn) {
+                                    System.out.println("Login successful. Welcome, " + username + "!");
+                                    clientname = username;
+                                    authenticated = true;
+                                } else {
+                                    System.out.println("Login failed. Please check your credentials and try again.");
+                                }
+                            } catch (RemoteException re2) {
+                                if (re2.getMessage().contains("Connection refused")) {
+                                    System.out.println(
+                                            "The user account server is currently unavailable. Please try again later.");
+                                } else {
+                                    System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
+                                }
+                            }
+                        } else {
+                            System.out.println("Remote error: " + re.getMessage());
+                        }
+                    }
+                } else {
+                    System.out.println("Unknown command. Please use CREATE or LOGIN.");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
-    	            if (command.equals("CREATE")) {
-    	                try {
-    	                    boolean created = accountServer.createAccount(username, password);
-    	                    if (created) {
-    	                        System.out.println("Account created successfully. Please log in.");
-    	                    } else {
-    	                        System.out.println("Account already exists. Try logging in.");
-    	                    }
-    	                } catch (RemoteException re) {
-    	                    if (re.getMessage().contains("Connection refused")) {
-    	                        System.out.println("Connection to the user account server was lost. Attempting to reconnect...");
-    	                        reconnectUserAccountServer();
-    	                        try {
-    	                            boolean created = accountServer.createAccount(username, password);
-    	                            if (created) {
-    	                                System.out.println("Account created successfully. Please log in.");
-    	                            } else {
-    	                                System.out.println("Account already exists. Try logging in.");
-    	                            }
-    	                        } catch (RemoteException re2) {
-    	                            if (re2.getMessage().contains("Connection refused")) {
-    	                                System.out.println("The user account server is currently unavailable. Please try again later.");
-    	                            } else {
-    	                                System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
-    	                            }
-    	                        }
-    	                    } else {
-    	                        System.out.println("Remote error: " + re.getMessage());
-    	                    }
-    	                }
-    	            } else if (command.equals("LOGIN")) {
-    	                try {
-    	                    boolean loggedIn = accountServer.loginAccount(username, password);
-    	                    if (loggedIn) {
-    	                        System.out.println("Login successful. Welcome, " + username + "!");
-    	                        clientname = username; // set the clientname after successful login
-    	                        authenticated = true;
-    	                    } else {
-    	                        System.out.println("Login failed. Please check your credentials and try again.");
-    	                    }
-    	                } catch (RemoteException re) {
-    	                    if (re.getMessage().contains("Connection refused")) {
-    	                        System.out.println("Connection to the user account server was lost. Attempting to reconnect...");
-    	                        reconnectUserAccountServer();
-    	                        try {
-    	                            boolean loggedIn = accountServer.loginAccount(username, password);
-    	                            if (loggedIn) {
-    	                                System.out.println("Login successful. Welcome, " + username + "!");
-    	                                clientname = username;
-    	                                authenticated = true;
-    	                            } else {
-    	                                System.out.println("Login failed. Please check your credentials and try again.");
-    	                            }
-    	                        } catch (RemoteException re2) {
-    	                            if (re2.getMessage().contains("Connection refused")) {
-    	                                System.out.println("The user account server is currently unavailable. Please try again later.");
-    	                            } else {
-    	                                System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
-    	                            }
-    	                        }
-    	                    } else {
-    	                        System.out.println("Remote error: " + re.getMessage());
-    	                    }
-    	                }
-    	            } else {
-    	                System.out.println("Unknown command. Please use CREATE or LOGIN.");
-    	            }
-    	        } catch (IOException e) {
-    	            e.printStackTrace();
-    	        }
-    	    }
-
-    	    // Display the help menu right after successful login.
-    	    printHelp();
+        // Display the help menu right after successful login.
+        printHelp();
 
         while (true) {
             System.out.print(clientname + "@" + serverUrl + ">");
+            System.out.println(inGame + "\n");
             try {
                 String userInput = consoleIn.readLine();
-                execute(parse(userInput), clientname);
+                if (inGame) {
+                    // Retrieve the guess word here
+                } else {
+                    // String userInput = consoleIn.readLine();
+                    execute(parse(userInput), clientname);
+                }
             } catch (RejectedException re) {
                 System.out.println(re);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void setInGame(boolean inGame) {
+        this.inGame = inGame;
+    }
+
+    public boolean isInGame() {
+        return inGame;
+    }
+
+    public BufferedReader getReader() {
+        return consoleIn;
     }
 
     private Command parse(String userInput) {
@@ -389,7 +412,7 @@ public class Client {
                     int gameId = Integer.parseInt(command.param1);
                     // Call remote method to start a multi-player game.
                     String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
-                    // System.out.println(joinMPResponse);
+                    System.out.println(joinMPResponse);
                     break;
 
                 case showactivegames:
@@ -519,7 +542,7 @@ public class Client {
         System.out.println("|                                                                             |");
         System.out.println(border);
     }
-    
+
     // Helper method to re-lookup the WordRepositoryServer.
     private void reconnectWordServer() {
         try {
@@ -529,8 +552,8 @@ public class Client {
             System.out.println("Reconnection attempt failed: " + e.getMessage());
         }
     }
-    
- // Helper method to reconnect to the UserAccountServer.
+
+    // Helper method to reconnect to the UserAccountServer.
     private void reconnectUserAccountServer() {
         try {
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
@@ -540,7 +563,6 @@ public class Client {
         }
     }
 
-    
     private void reconnectPuzzleServer() {
         try {
             puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
