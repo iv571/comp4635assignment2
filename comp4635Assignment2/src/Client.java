@@ -176,7 +176,6 @@ public class Client {
 
         while (true) {
             System.out.print(clientname + "@" + serverUrl + ">");
-            System.out.println(inGame + "\n");
             try {
                 String userInput = consoleIn.readLine();
                 if (inGame) {
