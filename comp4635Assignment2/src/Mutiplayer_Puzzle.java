@@ -106,11 +106,11 @@ public String render_player_view_puzzle () {
 			puzzle.append(ch + " ");
 		}
 		
-		puzzle.append("\n"); // Add a new line for each row
+		puzzle.append("\n");
+	
 	}
-	
+
 	return puzzle.toString();
-	
 	
 }
 public String render_puzzle_solution () {
@@ -126,7 +126,7 @@ public String render_puzzle_solution () {
 			puzzle.append(ch + " ");
 		}
 		
-		puzzle.append("\n"); // Add a new line for each row
+		puzzle.append("\n"); 
 	}
 	
 	return puzzle.toString();

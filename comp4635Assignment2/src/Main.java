@@ -5,8 +5,6 @@ import java.rmi.RemoteException;
 import java.util.Scanner;
 
 public class Main {
-
-
 	public static void main(String[] args) throws MalformedURLException, RemoteException, NotBoundException {
 		
 		WordRepositoryServer wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
@@ -15,8 +13,6 @@ public class Main {
 		
 		boolean GAME_OVER = false;
 		
-		new Word ("words.txt");
-
 		Mutiplayer_Puzzle puzzle = new Mutiplayer_Puzzle(5,5, wordServer);
 		
 		while (!GAME_OVER) {

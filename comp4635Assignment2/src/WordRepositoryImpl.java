@@ -154,6 +154,58 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
 		return puzzle;
 	}
 
+    public String find_matching_addtional_vertical_stem(char constraint_letter[]) {
+	
+		int index;
+		
+		List<String> candidate = new ArrayList<>();
+		 
+		boolean is_first_index_letter_only = is_first_index_letter_only(constraint_letter);
+		 
+		if (is_first_index_letter_only)
+			 
+			return find_constrained_word_match_with_first_letter(constraint_letter[0]);
+		 		 
+		for (String word : words) {
+	          
+			boolean matches = true;
+			 
+			for (index = 0; index < word.length() && index < constraint_letter.length; index++) {
+				 
+				if (constraint_letter[index] != '*') {
+					 
+					char word_ch = word.charAt(index);
+					 
+					if (word_ch != constraint_letter[index]) {
+						 
+						matches = false;
+						 
+						break;
+					}	 
+				 
+				}
+							
+			}
+
+			 if (!rest_is_matched_with_any_letter(index, constraint_letter))
+				 
+				 matches = false;
+			 
+			 if (matches)
+				 
+				 candidate.add(word);
+			 
+		 }
+		 
+		 
+        if (candidate.isEmpty()) 
+        	
+        	return null;
+	
+		return candidate.get(new Random().nextInt(candidate.size()));
+	
+	}
+    
 	private void read_words_info(){
 
 		BufferedReader br;
@@ -299,57 +351,7 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
 
 	}
 	
-	public String find_matching_addtional_vertical_stem(char constraint_letter[]) {
 	
-		int index;
-		
-		List<String> candidate = new ArrayList<>();
-		 
-		boolean is_first_index_letter_only = is_first_index_letter_only(constraint_letter);
-		 
-		if (is_first_index_letter_only)
-			 
-			return find_constrained_word_match_with_first_letter(constraint_letter[0]);
-		 		 
-		for (String word : words) {
-	          
-			boolean matches = true;
-			 
-			for (index = 0; index < word.length() && index < constraint_letter.length; index++) {
-				 
-				if (constraint_letter[index] != '*') {
-					 
-					char word_ch = word.charAt(index);
-					 
-					if (word_ch != constraint_letter[index]) {
-						 
-						matches = false;
-						 
-						break;
-					}	 
-				 
-				}
-							
-			}
-
-			 if (!rest_is_matched_with_any_letter(index, constraint_letter))
-				 
-				 matches = false;
-			 
-			 if (matches)
-				 
-				 candidate.add(word);
-			 
-		 }
-		 
-		 
-        if (candidate.isEmpty()) 
-        	
-        	return null;
-	
-		return candidate.get(new Random().nextInt(candidate.size()));
-	
-	}
 	
 	
 
