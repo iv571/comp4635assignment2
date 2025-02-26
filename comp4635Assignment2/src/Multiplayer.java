@@ -61,6 +61,7 @@ public class Multiplayer {
         StringBuilder response = new StringBuilder();
         response.append("You have successfully joined Game ID ").append(gameId).append(".\n");
 
+        // Broadcast the message to all players that a new player has joined
         game.broadcastMessage(player + " has joined the game!");
 
         // Start countdown only when the second player joins
@@ -68,20 +69,16 @@ public class Multiplayer {
             System.out.println("Starting auto-start timer for game " + gameId);
             scheduleAutoStart(gameId);
             game.broadcastMessage("The game will auto-start in 1 minute if not all players join.\n");
-            // response.append("The game will auto-start in 1 minute if not all players
-            // join.\n");
+            response.append("The game will auto-start in 1 minute if not all players join.\n");
         }
 
         if (game.getRemainingSpot() > 0) {
-            // response.append("Still waiting for
-            // ").append(game.getRemainingSpot()).append(" more players to join...\n");
+            response.append("Still waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n");
             game.broadcastMessage("Still waiting for " + game.getRemainingSpot() + " more players to join...\n");
         } else {
-            // response.append("***** All players joined! The game is now started
-            // *****\n\n");
-            // game.broadcastMessage("***** All players joined! The game is now started
-            // *****\n");
+            response.append("***** All players joined! The game is now started *****\n\n");
             game.startGame();
+            game.broadcastMessage("***** All players joined! The game is now started *****\n");
         }
 
         return response.toString();

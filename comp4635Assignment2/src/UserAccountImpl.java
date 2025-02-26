@@ -89,11 +89,6 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         saveAccountsToFile();
     }
     
-//    @Override
-//    public synchronized void updateMultiplayerScore(String username, int delta) throws RemoteException {
-//       
-//    }
-//    
     // Get the score for a given user.
     @Override
     public synchronized int getScore(String username) throws RemoteException {
