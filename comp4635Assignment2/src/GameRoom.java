@@ -82,10 +82,6 @@ public class GameRoom {
         shufflePlayers();
         puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel, wordServer);
 
-        // puzzleServer.print2DArray1();
-        // System.out.println("\n");
-        // puzzleServer.print2DArray2();
-
         String result = startTurns();
         System.out.println(result);
 
@@ -117,10 +113,11 @@ public class GameRoom {
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
                         broadcastMessage(currentPlayerName + " did not enter a valid word.");
                     } else {
+                     	broadcastMessage(puzzleServer.render_player_view_puzzle());
                         broadcastMessage(currentPlayerName + " typed: " + playerInput);
                         if (puzzleServer.is_guessed_word_correct(playerInput)) {
                             broadcastMessage("Player " + currentPlayerName + "'s guess is correct!");
-                            // broadcastMessage(puzzleServer.render_player_view_puzzle());
+                             	broadcastMessage(puzzleServer.render_player_view_puzzle());
                         } else {
                             broadcastMessage("Player " + currentPlayerName + "'s guess is not correct!");
                         }

@@ -2,7 +2,7 @@ import java.rmi.*;
 import java.util.HashMap;
 
 public interface WordRepositoryServer extends Remote {
-
+	
     public boolean createWord(String word) throws RemoteException;
 
     public boolean removeWord(String word) throws RemoteException;
@@ -14,5 +14,7 @@ public interface WordRepositoryServer extends Remote {
     public HashMap<String, Integer> generate_map_list(int word_len) throws RemoteException;
 
     public String find_matching_addtional_vertical_stem(char constraint_letter[]) throws RemoteException;
+
+	public void ping() throws RemoteException;
 
 }
