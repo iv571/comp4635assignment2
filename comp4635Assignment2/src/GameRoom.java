@@ -81,6 +81,7 @@ public class GameRoom {
         getCurrentActivePlayers();
         shufflePlayers();
         puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel, wordServer);
+        // puzzleServer.print_solution_puzzle();
 
         String result = startTurns();
         System.out.println(result);
@@ -98,7 +99,28 @@ public class GameRoom {
     }
 
     private String startTurns() {
-        while (currentTurnIndex < players.size()) {
+        while (!puzzleServer.is_All_words_are_guessed()) {
+            // Count the number of players who still have fail attempts left
+            int activePlayers = 0;
+            for (Player p : players) {
+                if (p.getCurrentFailAttempt() > 0) {
+                    activePlayers++;
+                }
+            }
+
+            // If only one player has fail attempts remaining, end the game
+            if (activePlayers <= 1) {
+                broadcastMessage("Game over! Only one player remains with fail attempts.");
+                break;
+            }
+
+            // Find the next player with remaining fail attempts
+            while (players.get(currentTurnIndex).getCurrentFailAttempt() == 0) {
+                broadcastMessage(
+                        players.get(currentTurnIndex).getName() + " has no remaining fail attempts and is skipped.");
+                currentTurnIndex = (currentTurnIndex + 1) % players.size(); // Move to next player
+            }
+
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
 
@@ -113,14 +135,20 @@ public class GameRoom {
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
                         broadcastMessage(currentPlayerName + " did not enter a valid word.");
                     } else {
-                     	broadcastMessage(puzzleServer.render_player_view_puzzle());
+                        broadcastMessage(puzzleServer.render_player_view_puzzle());
                         broadcastMessage(currentPlayerName + " typed: " + playerInput);
+
                         if (puzzleServer.is_guessed_word_correct(playerInput)) {
-                            broadcastMessage("Player " + currentPlayerName + "'s guess is correct!");
-                             	broadcastMessage(puzzleServer.render_player_view_puzzle());
+                            currentPlayer.increaseScore();
+                            broadcastMessage("Player " + currentPlayerName + "'s guess is correct! Add 1 score");
+                            broadcastMessage(puzzleServer.render_player_view_puzzle());
                         } else {
-                            broadcastMessage("Player " + currentPlayerName + "'s guess is not correct!");
+                            currentPlayer.decrementFailAttempt();
+                            broadcastMessage("Player " + currentPlayerName
+                                    + "'s guess is not correct!\nDeduct 1 Fail Attempt\n");
                         }
+                        broadcastMessage("Earned Scores: " + currentPlayer.getScore());
+                        broadcastMessage("Current Fail Attempts: " + currentPlayer.getCurrentFailAttempt() + "\n");
                     }
                 } else {
                     broadcastMessage("Player " + currentPlayerName + " is unavailable and has been removed.");
@@ -130,10 +158,11 @@ public class GameRoom {
                 broadcastMessage("Error communicating with " + currentPlayerName + ". Removing player...");
                 removePlayer(currentPlayerName);
             }
-
-            currentTurnIndex++; // Move to the next player
+            currentTurnIndex = (currentTurnIndex + 1) % players.size();
         }
-        return "End";
+
+        broadcastMessage("Congratulations! All words have been guessed!");
+        return "Game Over";
     }
 
     public synchronized String getCurrentPlayerTurn() {
@@ -277,7 +306,7 @@ public class GameRoom {
 
         public Player(String name) {
             this.name = name;
-            this.currentFailedAttempts = 0;
+            this.currentFailedAttempts = TOTAL_FAILED_ATTEMPTS;
             this.score = 0;
         }
 
@@ -287,6 +316,18 @@ public class GameRoom {
 
         public void increaseScore() {
             score++;
+        }
+
+        public void decrementFailAttempt() {
+            currentFailedAttempts -= 1;
+        }
+
+        public int getCurrentFailAttempt() {
+            return currentFailedAttempts;
+        }
+
+        public int getScore() {
+            return score;
         }
     }
 }
