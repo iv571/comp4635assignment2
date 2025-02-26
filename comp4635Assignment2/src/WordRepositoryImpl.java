@@ -138,7 +138,23 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * 
+     * Method: generate_map_list
+     *
+     * @param word_len
+     * 
+     * @ author Stanley
+     *
+     * Details:
+     * 			read words as stores as string list 
+     * 			randomly pick a vertical word 
+     * 			then find horizontal word match with the vertical word
+     * 			if the puzzle is null than re call this function again.
+     * 			return hash map that record which letter of the vertical
+     * 			must match with each horizontal words 
+     */
     public HashMap<String, Integer> generate_map_list(int word_len) throws RemoteException {
 
         read_words_info();
@@ -154,6 +170,18 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
         return puzzle;
     }
 
+    /**
+     * Method: find_matching_addtional_vertical_stem
+     * find all the match word lenght and store them into a list string
+     * then randomly choose one of the word from the list
+     * 
+     * @param char constraint_letter[]
+     * @return the matching verical words
+     * @ author Stanley
+     * 
+     * Details: base on the constraint to find the matching vertical word
+     * 			can randomly pick on of those
+     */
     public String find_matching_addtional_vertical_stem(char constraint_letter[]) {
 
         int index;
@@ -204,7 +232,8 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
         return candidate.get(new Random().nextInt(candidate.size()));
 
     }
-
+    public void ping() throws RemoteException {return;}
+    
     private void read_words_info() {
 
         BufferedReader br;
@@ -297,6 +326,20 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
         return puzzle;
     }
 
+    /**
+     * 
+     * Method: generate_random_position
+     *
+     * @param word_len
+     * @return
+     *
+     * @ author Stanley
+     *
+     * Details:
+     * 			return a int [] that have random position.
+     * 			eg if int [0] = 2 ; that find a horizontal word	
+     * 			that match with the 2 letter of the vertical word. 
+     */
     private int[] generate_random_position(int word_len) {
 
         int[] random_postion = new int[word_len];
@@ -346,7 +389,21 @@ public class WordRepositoryImpl extends UnicastRemoteObject implements WordRepos
         return candidate.get(new Random().nextInt(candidate.size()));
 
     }
-
+    /**
+     * 
+     * Method: rest_is_matched_with_any_letter
+     *
+     * @param index
+     * @param constraint_letter
+     * @return
+     *
+     * @ author Stanley
+     *
+     * Details:
+     * 			check if the element after the index only contain '*'
+     * 			if true, that only find for a word that match the element before the index
+     * 			the rest does care including the length as well
+     */
     private boolean rest_is_matched_with_any_letter(int index, char[] constraint_letter) {
 
         if (constraint_letter == null || index >= constraint_letter.length)
