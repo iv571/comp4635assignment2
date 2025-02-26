@@ -21,8 +21,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     // Map to hold a game session for each player
     private Map<String, GameSession> sessions = new ConcurrentHashMap<>();
-    
- // Reference to the WordRepository
+
+    // Reference to the WordRepository
     private WordRepositoryServer wordServer;
 
     // multiplayer manager
@@ -30,7 +30,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
-        connectToWordRepository(); 
+        connectToWordRepository();
     }
 
     // Inner class to represent a game session per player.
@@ -43,7 +43,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int failAttempts;
         // Additional game state (e.g., score) could be added here.
     }
-    
+
     /**
      * Initial connection to the WordRepositoryServer.
      */
@@ -64,8 +64,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int attempt = 0;
         while (attempt < maxAttempts) {
             try {
-                System.out.println("Attempting to reconnect to WordRepositoryServer (attempt " 
-                                   + (attempt + 1) + " of " + maxAttempts + ")...");
+                System.out.println("Attempting to reconnect to WordRepositoryServer (attempt "
+                        + (attempt + 1) + " of " + maxAttempts + ")...");
                 // Wait a bit before retrying
                 Thread.sleep(1000);
                 wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
@@ -161,7 +161,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         }
     }
 
-
     private String getRandomWordFromFile(int minLength) {
         List<String> words = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
@@ -233,7 +232,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     private char[][] constructPuzzle(String verticalStem, String[] horizontalWords) {
         int numRows = verticalStem.length();
-        
+
         // Compute the longest word length among verticalStem and horizontalWords.
         int maxWordLength = verticalStem.length();
         for (String word : horizontalWords) {
@@ -308,7 +307,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return sb.toString();
     }
 
- // Helper methods to synchronize access to sessions.
+    // Helper methods to synchronize access to sessions.
     private void putSession(String player, GameSession session) {
         synchronized (sessions) {
             sessions.put(player, session);
@@ -347,25 +346,28 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int numCols = verticalStemLength;
         int colForStem = numCols / 2;
         // Create an array for horizontal words of size 'effectiveLevel'.
-        // (This means we generate horizontal words only for rows 1 .. effectiveLevel-1.)
+        // (This means we generate horizontal words only for rows 1 ..
+        // effectiveLevel-1.)
         session.horizontalWords = new String[effectiveLevel];
         Arrays.fill(session.horizontalWords, "");
         for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
             String hWord;
             do {
-                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength, colForStem);
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength,
+                        colForStem);
             } while (hWord.isEmpty());
             session.horizontalWords[i] = hWord.toLowerCase();
         }
 
-        // Construct the puzzle grid using the entire vertical stem (all its characters).
+        // Construct the puzzle grid using the entire vertical stem (all its
+        // characters).
         session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
         int numLetters = countPuzzleLetters(session.puzzle);
         session.failAttempts = failedAttemptFactor * numLetters;
 
         session.formattedPuzzle = formatPuzzle(session.puzzle);
         session.revealedPuzzle = revealPuzzle(session.puzzle);
-        
+
         // Only the update to the sessions map is synchronized.
         putSession(player, session);
 
@@ -373,8 +375,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         System.out.println(session.revealedPuzzle);
 
         return "Game started for " + player + "!\n" +
-               session.formattedPuzzle +
-               "\nAttempts allowed: " + session.failAttempts;
+                session.formattedPuzzle +
+                "\nAttempts allowed: " + session.failAttempts;
     }
 
     @Override
@@ -422,7 +424,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
         }
         return "Current puzzle state:\n" + session.formattedPuzzle +
-               "\nAttempts remaining: " + session.failAttempts;
+                "\nAttempts remaining: " + session.failAttempts;
     }
 
     @Override
@@ -501,7 +503,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
             }
             return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
-                   "\nAttempts remaining: " + session.failAttempts;
+                    "\nAttempts remaining: " + session.failAttempts;
         } else {
             session.failAttempts--;
             if (session.failAttempts <= 0) {
@@ -515,7 +517,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 removeSession(player);
                 return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
             }
-            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " + session.failAttempts;
+            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: "
+                    + session.failAttempts;
         }
     }
 
@@ -535,7 +538,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return startGame(player, 5, 3);
     }
 
-
     @Override
     public synchronized String startMultiGame(String username, int numPlayers, int level)
             throws RemoteException, RejectedException {
@@ -552,5 +554,35 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     @Override
     public String showActiveGameRooms() throws RemoteException {
         return multiplayerManager.showActiveGameRooms();
+    }
+
+    @Override
+    public String startGameRoom(String hostName, int gameId) throws RemoteException {
+        return multiplayerManager.startGameRoom(hostName, gameId);
+    }
+
+    @Override
+    public String setActivePlayer(String player, int gameId) throws RemoteException {
+        return multiplayerManager.setActivePlayer(player, gameId);
+    }
+
+    @Override
+    public String leaveRoom(String player, int gameId) throws RemoteException {
+        return multiplayerManager.leaveRoom(player, gameId);
+    }
+
+    @Override
+    public boolean isActiveRoom(int gameId) throws RemoteException {
+        return multiplayerManager.isActiveRoom(gameId);
+    }
+
+    @Override
+    public boolean isGameRun(int gameId) throws RemoteException {
+        return multiplayerManager.isGameRun(gameId);
+    }
+
+    @Override
+    public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
+        return multiplayerManager.runGame(player, roomId, wordServer);
     }
 }

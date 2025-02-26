@@ -3,8 +3,6 @@ import java.util.HashMap;
 
 public interface WordRepositoryServer extends Remote {
 
-	public void ping() throws RemoteException;
-	
     public boolean createWord(String word) throws RemoteException;
 
     public boolean removeWord(String word) throws RemoteException;

@@ -58,41 +58,90 @@ public class Multiplayer {
             return "Game room is full. Cannot join.";
         }
 
-        StringBuilder response = new StringBuilder();
-        response.append("You have successfully joined Game ID ").append(gameId).append(".\n");
-
         // Broadcast the message to all players that a new player has joined
-        game.broadcastMessage(player + " has joined the game!");
+        game.broadcastMessage(player + " has joined the game!\n" + "Waiting for the host to start the game...\n");
 
-        // Start countdown only when the second player joins
-        if (game.getPlayerCount() > 1 && game.getRemainingSpot() > 0) {
-            System.out.println("Starting auto-start timer for game " + gameId);
-            scheduleAutoStart(gameId);
-            game.broadcastMessage("The game will auto-start in 1 minute if not all players join.\n");
-            response.append("The game will auto-start in 1 minute if not all players join.\n");
-        }
-
-        if (game.getRemainingSpot() > 0) {
-            response.append("Still waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n");
-            game.broadcastMessage("Still waiting for " + game.getRemainingSpot() + " more players to join...\n");
-        } else {
-            response.append("***** All players joined! The game is now started *****\n\n");
-            game.startGame();
-            game.broadcastMessage("***** All players joined! The game is now started *****\n");
-        }
-
-        return response.toString();
+        return "\n";
     }
 
-    private void scheduleAutoStart(int gameId) {
-        scheduler.schedule(() -> {
+    public synchronized String startGameRoom(String hostName, int gameId) throws RemoteException {
+        // Check if the host has a valid game ID
+        if (!hostGameMap.containsKey(hostName)) {
+            return "Host does not have a valid game room to start.";
+        }
+
+        GameRoom game = gameRooms.get(gameId);
+
+        if (game == null) {
+            return "Game with ID " + gameId + " not found.";
+        }
+
+        // Start the game by calling startGame method of GameRoom
+        String result = game.startGame(hostName);
+
+        return result;
+    }
+
+    public synchronized String setActivePlayer(String player, int roomId) throws RemoteException {
+        GameRoom game = gameRooms.get(roomId);
+
+        if (game == null) {
+            return "Game with ID " + roomId + " not found.";
+        }
+
+        String result = game.setActivePlayer(player);
+        return result;
+    }
+
+    public synchronized String runGame(String player, int roomId, WordRepositoryServer wordServer)
+            throws RemoteException {
+        GameRoom game = gameRooms.get(roomId);
+
+        if (game == null) {
+            return "Game with ID " + roomId + " not found.";
+        }
+        String result = game.runGame(player, wordServer);
+        return result;
+    }
+
+    public synchronized String leaveRoom(String player, int roomId) {
+        GameRoom game = gameRooms.get(roomId);
+
+        if (game == null) {
+            return "Game with ID " + roomId + " not found.";
+        }
+        String result = game.leaveRoom(player);
+        return result;
+    }
+
+    public synchronized boolean isActiveRoom(int gameId) throws RemoteException {
+        try {
             GameRoom game = gameRooms.get(gameId);
-            if (game != null && !game.isStarted()) {
-                game.startGame(); // Ensure the game state is updated
-                game.broadcastMessage("***** Time is up! Auto-starting game " + gameId + " now! *****");
-                System.out.println("***** Time is up! Auto-starting game " + gameId + " now! *****");
+
+            if (game == null) {
+                throw new RemoteException("Game with ID " + gameId + " not found.");
             }
-        }, 1, TimeUnit.MINUTES);
+
+            return game.isStarted();
+        } catch (Exception e) {
+            throw new RemoteException("An error occurred while checking if the game room is active: " + e.getMessage(),
+                    e);
+        }
+    }
+
+    public synchronized boolean isGameRun(int gameId) throws RemoteException {
+        try {
+            GameRoom game = gameRooms.get(gameId);
+
+            if (game == null) {
+                throw new RemoteException("Game with ID " + gameId + " not found.");
+            }
+
+            return game.isGameRun();
+        } catch (Exception e) {
+            throw new RemoteException("An error occurred while checking if the game room is active: " + e.getMessage(),
+                    e);
+        }
     }
 
     private int generateGameId() {

@@ -5,7 +5,6 @@ import java.io.InputStreamReader;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.util.StringTokenizer;
-import java.util.Map;
 
 public class Client {
     private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
@@ -17,6 +16,7 @@ public class Client {
     private ClientCallback clientCallback;
     String clientname;
     String username = " ";
+    int activeGameID = -1;
 
     // Define the commands the client supports.
     enum CommandName {
@@ -33,7 +33,11 @@ public class Client {
         help, // help
         startmultiplayer, // start multiplayer game
         joinmultiplayer, // join the multiplayer game
+        startgameroom, // start the game room (Only host can start)
         showactivegames, // show existing game room
+        ready, // ready for the game room
+        leave, // leave the game room
+        rungame, // run the game
         quit // quit
     }
 
@@ -175,9 +179,17 @@ public class Client {
 
         while (true) {
             System.out.print(clientname + "@" + serverUrl + ">");
+            System.out.println("OUTER\n");
             try {
-                String userInput = consoleIn.readLine();
-                execute(parse(userInput), clientname);
+                if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
+                        && puzzleServer.isActiveRoom(activeGameID)) {
+                    System.out.println("WAITING IN MULTIPLAYER MODE...\n");
+                } else {
+                    System.out.println("NORMAL MODE\nExecutreCommand\n");
+                    String userInput = consoleIn.readLine();
+                    execute(parse(userInput), clientname);
+                    System.out.println("INNER\n");
+                }
             } catch (RejectedException re) {
                 System.out.println(re);
             } catch (IOException e) {
@@ -396,6 +408,60 @@ public class Client {
                     System.out.println(joinMPResponse);
                     break;
 
+                case startgameroom:
+                    if (command.param1 == null) {
+                        System.out.println("Usage: joinmultiplayer <gameId>");
+                        break;
+                    }
+                    int roomId = Integer.parseInt(command.param1);
+                    String gameMPResponse = puzzleServer.startGameRoom(username, roomId);
+                    System.out.println(gameMPResponse);
+                    if (gameMPResponse.equals("You have successfully started the game room.\n")) {
+                        activeGameID = roomId;
+                        System.out
+                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                    }
+                    break;
+                case rungame:
+                    if (command.param1 == null) {
+                        System.out.println("Usage: rungame <gameId>");
+                        break;
+                    }
+                    roomId = Integer.parseInt(command.param1);
+                    if (activeGameID != -1 && roomId == activeGameID && puzzleServer.isActiveRoom(activeGameID)) {
+                        String runMPResponse = puzzleServer.runGame(username, activeGameID, wordServer);
+                        System.out.println(runMPResponse);
+                    } else {
+                        System.out.println("This is not active game id");
+                    }
+                    break;
+
+                case ready:
+                    if (command.param1 == null) {
+                        System.out.println("Usage: ready <gameId>");
+                        break;
+                    }
+                    roomId = Integer.parseInt(command.param1);
+                    String readyMPResponse = puzzleServer.setActivePlayer(username, roomId);
+                    System.out.println(readyMPResponse);
+                    if (readyMPResponse.equals("You have been marked as ready.\n")) {
+                        activeGameID = roomId;
+                        System.out.println("Hello " + activeGameID);
+                        System.out
+                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                    }
+                    break;
+
+                case leave:
+                    if (command.param1 == null) {
+                        System.out.println("Usage: leave <gameId>");
+                        break;
+                    }
+                    roomId = Integer.parseInt(command.param1);
+                    String leaveMPResponse = puzzleServer.leaveRoom(username, roomId);
+                    System.out.println(leaveMPResponse);
+                    break;
+
                 case showactivegames:
                     String activeRooms = puzzleServer.showActiveGameRooms();
                     System.out.println(activeRooms);
@@ -434,7 +500,9 @@ public class Client {
                     System.out.println("Unknown command");
                     break;
             }
-        } catch (RemoteException re) {
+        } catch (
+
+        RemoteException re) {
             System.out.println("Remote error: " + re.getMessage());
         } catch (NumberFormatException nfe) {
             System.out.println("Invalid number format: " + nfe.getMessage());
@@ -487,6 +555,7 @@ public class Client {
             this.userName = userName;
             this.amount = amount;
         }
+
     }
 
     /**
@@ -502,6 +571,10 @@ public class Client {
         System.out.println("|                                                                             |");
         System.out.println("|   startmultiplayer <numPlayers> <level>        - Start a multi-player game  |");
         System.out.println("|   joinmultiplayer <gameId>                     - Join a multi-player game   |");
+        System.out.println("|   startgameroom <gameId>                       - Start the game room        |");
+        System.out.println("|   rungame <gameId>                             - run the game room          |");
+        System.out.println("|   ready <gameId>                               - Ready for the game         |");
+        System.out.println("|   leave  <gameId>                              - Leave the game room        |");
         System.out.println("|   showactivegames                              - Show all active game rooms |");
         System.out.println("|                                                                             |");
         System.out.println(border);
