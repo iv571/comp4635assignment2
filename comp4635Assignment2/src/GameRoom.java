@@ -81,7 +81,7 @@ public class GameRoom {
         getCurrentActivePlayers();
         shufflePlayers();
         puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel, wordServer);
-        // puzzleServer.print_solution_puzzle();
+        puzzleServer.print_solution_puzzle();
 
         String result = startTurns();
         System.out.println(result);
@@ -124,6 +124,7 @@ public class GameRoom {
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
 
+            broadcastMessage(puzzleServer.render_player_view_puzzle());
             String message = currentPlayerName + ", it's your turn! Please type your word.";
             broadcastMessage(message);
 
@@ -135,7 +136,6 @@ public class GameRoom {
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
                         broadcastMessage(currentPlayerName + " did not enter a valid word.");
                     } else {
-                        broadcastMessage(puzzleServer.render_player_view_puzzle());
                         broadcastMessage(currentPlayerName + " typed: " + playerInput);
 
                         if (puzzleServer.is_guessed_word_correct(playerInput)) {

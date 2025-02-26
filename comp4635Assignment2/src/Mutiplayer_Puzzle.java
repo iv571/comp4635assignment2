@@ -865,6 +865,8 @@ public class Mutiplayer_Puzzle {
 
 	public void print_solution_puzzle() {
 
+		System.out.println();
+		
 		for (char[] row : puzzle_solution) {
 
 			for (char ch : row) {
@@ -878,6 +880,8 @@ public class Mutiplayer_Puzzle {
 
 	private void print_player_view_puzzle() {
 
+		System.out.println();
+		
 		for (char[] row : player_view_puzzle) {
 
 			for (char ch : row) {
