@@ -173,5 +173,3 @@ Steps to start a multiplayer game:
 - **`#`** : End the Game
 
 ---
-
-This update integrates the multiplayer game commands in a dedicated section while preserving the original formatting and structure of the README.
