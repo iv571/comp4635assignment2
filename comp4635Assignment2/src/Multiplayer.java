@@ -4,6 +4,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+
 public class Multiplayer {
     private Map<Integer, GameRoom> gameRooms; // Stores active game rooms
     private AtomicInteger gameIdCounter; // Thread-safe counter
@@ -17,27 +18,27 @@ public class Multiplayer {
         this.scheduler = Executors.newScheduledThreadPool(5);
     }
 
-    private synchronized int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
+    private synchronized int createGame(String host, int numPlayers, int gameLevel, ClientCallback callback) throws RemoteException {
         if (hostGameMap.containsKey(host)) {
             throw new RemoteException("Host " + host + " has already created a game and cannot create another.");
         }
         if (numPlayers < 2) {
             throw new RemoteException("At least 2 players required to start multiplayer mode.\n");
         }
-
         int gameId = generateGameId();
-        GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host);
+        GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host, callback);
         gameRooms.put(gameId, gameRoom);
         hostGameMap.put(host, gameId);
+      
         System.out.println("Game room created: Game ID = " + gameId + " by " + host);
         return gameId;
     }
 
-    public synchronized String startMultiGame(String host, int numPlayers, int gameLevel) {
+    public synchronized String startMultiGame(String host, int numPlayers, int gameLevel, ClientCallback hostCallback) {
         try {
-            int newGameId = createGame(host, numPlayers, gameLevel);
+            int newGameId = createGame(host, numPlayers, gameLevel, hostCallback);
             return "Multi-player game created! Game ID = " + newGameId
-                    + "\nWaiting for " + (numPlayers) + " more players to join...";
+                    + "\nWaiting for " + (numPlayers - 1) + " more players to join...";
         } catch (RemoteException e) {
             return "Failed to create game: " + e.getMessage();
         }
@@ -102,6 +103,10 @@ public class Multiplayer {
             return "Game with ID " + roomId + " not found.";
         }
         String result = game.runGame(player, wordServer);
+        if (game.isGameRun()) {
+            game.currentTurnIndex = 0; // Ensure the first player (host) starts
+            notifyNextTurn(roomId);    // Notify the first player
+        }
         return result;
     }
 
@@ -174,4 +179,89 @@ public class Multiplayer {
 
         return info.toString();
     }
+    
+    public void processGuess(int gameId, String player, String guess) throws RemoteException {
+        GameRoom room = gameRooms.get(gameId);
+        if (room == null || !room.isGameRun()) {
+            throw new RemoteException("Game room not found or not running.");
+        }
+
+        String currentPlayer = room.players.get(room.currentTurnIndex).getName();
+        if (!currentPlayer.equals(player)) {
+            room.playerCallbacks.get(player).receiveMessage("Not your turn yet.");
+            return;
+        }
+
+        // Determine if the guess is a letter or a word
+        boolean correct;
+        if (guess.length() == 1) {
+            char letter = guess.charAt(0);
+            correct = room.puzzleServer.guessLetter(letter);
+        } else {
+            correct = room.puzzleServer.guessWord(guess);
+        }
+
+        if (correct) {
+            // Update player's score
+            Player currentPlayerObj = room.players.get(room.currentTurnIndex);
+            currentPlayerObj.increaseScore();
+
+            // Check if puzzle is solved
+            if (room.puzzleServer.is_All_words_are_guessed()) {
+                room.isRun = false;
+                updateAllClients(gameId, "Game over! The puzzle has been solved.\nFinal Puzzle:\n" + 
+                    room.puzzleServer.render_player_view_puzzle());
+                try {
+                	room.accountServer.updateMultiplayerScoresFromGameRoom(room.getMultiplayerScores());
+                } catch (RemoteException e) {
+                    System.err.println("Error updating scores: " + e.getMessage());
+                }
+                return;
+            }
+        }
+
+        // Advance to the next player
+        room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.size();
+        notifyNextTurn(gameId);
+
+        // Update all clients with current puzzle state
+        updateAllClients(gameId, "Current Puzzle:\n" + room.puzzleServer.render_player_view_puzzle());
+    }
+    
+    private void notifyNextTurn(int gameId) throws RemoteException {
+        GameRoom room = gameRooms.get(gameId);
+        if (room != null && room.isGameRun()) {
+            Player nextPlayer = room.players.get(room.currentTurnIndex);
+            String nextPlayerName = nextPlayer.getName();
+            ClientCallback callback = room.playerCallbacks.get(nextPlayerName);
+            if (callback != null) {
+                callback.notifyTurn();
+                updateAllClients(gameId, "It's " + nextPlayerName + "'s turn.");
+            } else {
+                // Player disconnected, remove them
+                room.removePlayer(nextPlayerName);
+                if (room.players.isEmpty()) {
+                    room.isRun = false;
+                    updateAllClients(gameId, "All players have disconnected. Game ended.");
+                } else {
+                    room.currentTurnIndex = room.currentTurnIndex % room.players.size();
+                    notifyNextTurn(gameId); // Recursively notify the next player
+                }
+            }
+        }
+    }
+    
+    
+    private void updateAllClients(int gameId, String message) throws RemoteException {
+        GameRoom room = gameRooms.get(gameId);
+        if (room != null) {
+            for (ClientCallback callback : room.playerCallbacks.values()) {
+                if (callback != null) {
+                    callback.receiveMessage(message);
+                }
+            }
+        }
+    }
+
+   
 }

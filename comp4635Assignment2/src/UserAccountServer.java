@@ -14,6 +14,15 @@ public interface UserAccountServer extends Remote {
     int getScore(String username) throws RemoteException;
 
 	Map<String, Integer> getScoreboard() throws RemoteException;
+
+	public void integrateMultiplayerScores(Map<String, Integer> gameScores) throws RemoteException;
+
+	Map<String, String> getCombinedScoreboard() throws RemoteException;
+
+	
+	
+	void updateMultiplayerScoresFromGameRoom(Map<String, Integer> gameScores) throws RemoteException;
+
     
     
 }

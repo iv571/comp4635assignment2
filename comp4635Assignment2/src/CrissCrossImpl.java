@@ -539,9 +539,9 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     @Override
-    public synchronized String startMultiGame(String username, int numPlayers, int level)
+    public synchronized String startMultiGame(String username, int numPlayers, int level, ClientCallback hostCallback)
             throws RemoteException, RejectedException {
-        return multiplayerManager.startMultiGame(username, numPlayers, level);
+        return multiplayerManager.startMultiGame(username, numPlayers, level, hostCallback);
     }
 
     @Override
@@ -584,5 +584,10 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     @Override
     public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
         return multiplayerManager.runGame(player, roomId, wordServer);
+    }
+    
+    @Override
+    public void submitGuess(int gameId, String player, String guess) throws RemoteException {
+        multiplayerManager.processGuess(gameId, player, guess);
     }
 }

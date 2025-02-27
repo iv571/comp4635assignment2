@@ -25,6 +25,11 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
     // Accounts map now stores username -> hashedPassword
     private Map<String, String> accounts = new HashMap<>();
     private Map<String, Integer> scores = new ConcurrentHashMap<>();
+ // New field: multiplayerScores stores scores for multiplayer sessions
+    private Map<String, Integer> multiplayerScores = new ConcurrentHashMap<>();
+    private static final String MULTIPLAYER_SCORES_FILE = "multiplayer_scores.txt";
+    
+
 
     // Load accounts from file upon instantiation.
     protected UserAccountImpl() throws RemoteException {
@@ -113,6 +118,53 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         return Collections.unmodifiableMap(sortedMap);
     }
     
+    
+    
+    @Override
+    public synchronized Map<String, String> getCombinedScoreboard() throws RemoteException {
+        // First, read multiplayer scores from the file.
+        Map<String, Integer> fileMultiplayerScores = new HashMap<>();
+        File file = new File(MULTIPLAYER_SCORES_FILE);
+        if (file.exists()) {
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line;
+                // Each line is formatted as "username;multiplayerScore"
+                while ((line = br.readLine()) != null) {
+                    String[] parts = line.split(";");
+                    if (parts.length >= 2) {
+                        String username = parts[0].trim();
+                        int mScore = Integer.parseInt(parts[1].trim());
+                        fileMultiplayerScores.put(username, mScore);
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error reading " + MULTIPLAYER_SCORES_FILE + ": " + e.getMessage());
+            }
+        }
+
+        // Combine individual scores (from the in-memory scores map) with the multiplayer scores from file.
+        Map<String, Integer> totalScores = new HashMap<>();
+        for (String username : accounts.keySet()) {
+            int individual = scores.getOrDefault(username, 0);
+            int multiplayer = fileMultiplayerScores.getOrDefault(username, 0);
+            totalScores.put(username, individual + multiplayer);
+        }
+
+        // Sort users by total score (descending) and build a sorted combined scoreboard.
+        List<Map.Entry<String, Integer>> list = new ArrayList<>(totalScores.entrySet());
+        Collections.sort(list, (e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+
+        Map<String, String> sortedCombined = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : list) {
+            String username = entry.getKey();
+            int individual = scores.getOrDefault(username, 0);
+            int multiplayer = fileMultiplayerScores.getOrDefault(username, 0);
+            sortedCombined.put(username, "Individual: " + individual + ", Multiplayer: " + multiplayer);
+        }
+
+        return Collections.unmodifiableMap(sortedCombined);
+    }
+    
     // Helper method: load accounts from file into the in-memory maps.
     private void loadAccountsFromFile() {
         File file = new File(ACCOUNTS_FILE);
@@ -161,6 +213,59 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
     
+    private void loadMultiplayerScoresFromFile() {
+        File file = new File(MULTIPLAYER_SCORES_FILE);
+        if (!file.exists()) {
+            return;
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            // Each line format: username;multiplayerScore
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(";");
+                if (parts.length >= 2) {
+                    String username = parts[0].trim();
+                    int mscore = Integer.parseInt(parts[1].trim());
+                    multiplayerScores.put(username, mscore);
+                }
+            }
+            System.out.println("Loaded " + multiplayerScores.size() + " multiplayer score(s) from file.");
+        } catch (IOException e) {
+            System.err.println("Error reading " + MULTIPLAYER_SCORES_FILE + ": " + e.getMessage());
+        }
+    }
+    
+    private synchronized void saveMultiplayerScoresToFile() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(MULTIPLAYER_SCORES_FILE))) {
+            for (Map.Entry<String, Integer> entry : multiplayerScores.entrySet()) {
+                bw.write(entry.getKey() + ";" + entry.getValue());
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing to " + MULTIPLAYER_SCORES_FILE + ": " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public synchronized void integrateMultiplayerScores(Map<String, Integer> gameScores) throws RemoteException {
+        for (Map.Entry<String, Integer> entry : gameScores.entrySet()) {
+            String username = entry.getKey();
+            int gameScore = entry.getValue();
+
+            // Update the multiplayer-specific scores.
+            int currentMultiplayerScore = multiplayerScores.getOrDefault(username, 0);
+            multiplayerScores.put(username, currentMultiplayerScore + gameScore);
+
+            // Optionally, also update the individual (persistent) score.
+            int currentPersistentScore = scores.getOrDefault(username, 0);
+            scores.put(username, currentPersistentScore + gameScore);
+        }
+        // Persist both individual and multiplayer scores.
+        saveAccountsToFile();
+        saveMultiplayerScoresToFile();
+        System.out.println("Integrated multiplayer scores from game session.");
+    }
+    
     // Main method for starting the account server.
     public static void main(String[] args) {
         try {
@@ -178,4 +283,15 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
             e.printStackTrace();
         }
     }
+    
+ 
+	@Override
+	public synchronized void updateMultiplayerScoresFromGameRoom(Map<String, Integer> gameScores) throws RemoteException {
+		 
+	        integrateMultiplayerScores(gameScores);
+	        System.out.println("Multiplayer scores updated from GameRoom.");
+		
+	}
+
+
 }

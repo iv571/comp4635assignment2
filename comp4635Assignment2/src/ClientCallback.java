@@ -5,4 +5,6 @@ public interface ClientCallback extends Remote {
     void receiveMessage(String message) throws RemoteException;
 
     public String requestPlayerInput(String playerName) throws RemoteException;
+    
+    void notifyTurn() throws RemoteException;  // New method to signal the player's turn
 }

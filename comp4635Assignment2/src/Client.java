@@ -17,6 +17,11 @@ public class Client {
     String clientname;
     String username = " ";
     int activeGameID = -1;
+    boolean multiplayerMode = false;
+    private boolean isHost = false;
+    boolean isMyTurn = false; // Add this field
+
+
 
     // Define the commands the client supports.
     enum CommandName {
@@ -30,10 +35,11 @@ public class Client {
         check, // check <word>
         score, // check score
         scoreboard, // view scoreboard
+        multiplayerscoreboard, // new command for combined scoreboard
         help, // help
         startmultiplayer, // start multiplayer game
         joinmultiplayer, // join the multiplayer game
-        startgameroom, // start the game room (Only host can start)
+        startgame, // start the game room (Only host can start)
         showactivegames, // show existing game room
         ready, // ready for the game room
         leave, // leave the game room
@@ -48,7 +54,7 @@ public class Client {
         try {
             // Look up the remote puzzle server object using the provided URL.
             puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
-            clientCallback = new ClientImpl();
+            clientCallback = new ClientImpl(this);
             // Look up the remote user account server (assumed to be at a fixed URL).
             accountServer = (UserAccountServer) Naming.lookup("rmi://localhost:1099/UserAccountServer");
 
@@ -178,20 +184,35 @@ public class Client {
         printHelp();
 
         while (true) {
-            System.out.print(clientname + "@" + serverUrl + ">");
-            System.out.println("OUTER\n");
             try {
-                if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
-                        && puzzleServer.isActiveRoom(activeGameID)) {
-                    System.out.println("WAITING IN MULTIPLAYER MODE...\n");
-                } else {
-                    System.out.println("NORMAL MODE\nExecutreCommand\n");
-                    String userInput = consoleIn.readLine();
-                    execute(parse(userInput), clientname);
-                    System.out.println("INNER\n");
-                }
-            } catch (RejectedException re) {
-                System.out.println(re);
+            	if (multiplayerMode && activeGameID != -1 && puzzleServer.isActiveRoom(activeGameID)) {
+            	    System.out.print(clientname + "@server>");
+            	    String userInput = consoleIn.readLine();
+            	    if (userInput != null && !userInput.trim().isEmpty()) {
+            	        Command cmd = parse(userInput);
+            	        if (isControlCommand(cmd)) {
+            	            try {
+            	                execute(cmd, clientname);
+            	            } catch (RejectedException e) {
+            	                e.printStackTrace();
+            	            }
+            	        } else if (isMyTurn) {
+            	            puzzleServer.submitGuess(activeGameID, clientname, userInput.trim());
+            	            isMyTurn = false;
+            	        } else {
+            	            System.out.println("It's not your turn. Please wait or use a control command.");
+            	        }
+            	    }
+            	} else {
+            	    // Single-player mode
+            	    System.out.print(clientname + "@server>");
+            	    String userInput = consoleIn.readLine();
+            	    try {
+            	        execute(parse(userInput), clientname);
+            	    } catch (RejectedException e) {
+            	        e.printStackTrace();
+            	    }
+            	}
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -391,7 +412,7 @@ public class Client {
                     int numPlayers = Integer.parseInt(command.param1);
                     int level = Integer.parseInt(command.param2);
                     // Call remote method to start a multi-player game.
-                    String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level);
+                    String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level, clientCallback);
                     System.out.println(startMPResponse);
                     break;
 
@@ -406,11 +427,15 @@ public class Client {
                     // Call remote method to start a multi-player game.
                     String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
                     System.out.println(joinMPResponse);
+                    if (joinMPResponse.trim().isEmpty()) {  // empty response indicates success
+                        multiplayerMode = true;
+                        activeGameID = gameId;
+                    }
                     break;
 
-                case startgameroom:
+                case startgame:
                     if (command.param1 == null) {
-                        System.out.println("Usage: joinmultiplayer <gameId>");
+                        System.out.println("Usage: startgame <gameId>");
                         break;
                     }
                     int roomId = Integer.parseInt(command.param1);
@@ -418,13 +443,16 @@ public class Client {
                     System.out.println(gameMPResponse);
                     if (gameMPResponse.equals("You have successfully started the game room.\n")) {
                         activeGameID = roomId;
+                        isHost = true;  // Mark this client as host!
                         System.out
                                 .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
                     }
+                    multiplayerMode = true;
                     break;
                 case rungame:
                     if (command.param1 == null) {
                         System.out.println("Usage: rungame <gameId>");
+                        multiplayerMode = true;
                         break;
                     }
                     roomId = Integer.parseInt(command.param1);
@@ -492,6 +520,28 @@ public class Client {
                         System.out.println("Error retrieving scoreboard: " + e.getMessage());
                     }
                     break;
+                case multiplayerscoreboard:
+                    try {
+                        // Retrieve the combined scoreboard from the account server.
+                        java.util.Map<String, String> combinedScoreboard = accountServer.getCombinedScoreboard();
+                        System.out.println("---- Multiplayer Scoreboard ----");
+                        System.out.printf("%-12s %-15s %-15s\n", "User", "Individual", "Multiplayer");
+                        if (combinedScoreboard.isEmpty()) {
+                            System.out.println("No scores available.");
+                        } else {
+                            for (java.util.Map.Entry<String, String> entry : combinedScoreboard.entrySet()) {
+                                // The value is in the format "Individual: X, Multiplayer: Y"
+                                String[] parts = entry.getValue().split(", ");
+                                String individual = parts[0].split(": ")[1];
+                                String multiplayer = parts[1].split(": ")[1];
+                                System.out.printf("%-12s %-15s %-15s\n", entry.getKey(), individual, multiplayer);
+                            }
+                        }
+                        System.out.println("--------------------");
+                    } catch (RemoteException e) {
+                        System.out.println("Error retrieving multiplayerscoreboard: " + e.getMessage());
+                    }
+                    break;
                 case quit:
                     System.out.println("Quitting...");
                     System.exit(0);
@@ -557,6 +607,19 @@ public class Client {
         }
 
     }
+    
+    private boolean isControlCommand(Command cmd) {
+        if (cmd == null) {
+            return false;
+        }
+        return cmd.commandName == CommandName.ready ||
+               cmd.commandName == CommandName.leave ||
+               cmd.commandName == CommandName.help ||
+               cmd.commandName == CommandName.showactivegames ||
+               cmd.commandName == CommandName.score ||
+               cmd.commandName == CommandName.scoreboard ||
+               cmd.commandName == CommandName.rungame; // Added rungame
+    }
 
     /**
      * Prints a list of available commands.
@@ -571,11 +634,12 @@ public class Client {
         System.out.println("|                                                                             |");
         System.out.println("|   startmultiplayer <numPlayers> <level>        - Start a multi-player game  |");
         System.out.println("|   joinmultiplayer <gameId>                     - Join a multi-player game   |");
-        System.out.println("|   startgameroom <gameId>                       - Start the game room        |");
+        System.out.println("|   startgame <gameId>                           - Start the game room        |");
         System.out.println("|   rungame <gameId>                             - run the game room          |");
         System.out.println("|   ready <gameId>                               - Ready for the game         |");
         System.out.println("|   leave  <gameId>                              - Leave the game room        |");
         System.out.println("|   showactivegames                              - Show all active game rooms |");
+        System.out.println("|   multiplayerscoreboard                        - View combined scoreboard   |");
         System.out.println("|                                                                             |");
         System.out.println(border);
         System.out.println("|                                                                             |");
