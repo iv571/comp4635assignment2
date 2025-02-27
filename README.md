@@ -9,6 +9,7 @@ Welcome to the COMP-4635 Assignment 2 repository. This document outlines the gam
 - [Game Instructions](#game-instructions)
   - [Option A: Manual Start](#option-a-manual-start)
   - [Option B: Orchestration Script](#option-b-orchestration-script)
+- [Multiplayer Games](#multiplayer-games)
 - [Additional Commands](#additional-commands)
 - [Shortcuts (After Starting Criss Cross Puzzle)](#shortcuts-after-starting-criss-cross-puzzle)
 
@@ -78,6 +79,52 @@ Welcome to the COMP-4635 Assignment 2 repository. This document outlines the gam
 
 ---
 
+## **Multiplayer Games**
+
+Steps to start a multiplayer game:
+
+1. **Host:**  
+   ```bash
+   startmultiplayer <numPlayers> <level>        - Start a multi-player game
+   ```
+
+2. **Players:**  
+   ```bash
+   joinmultiplayer <gameId>                     - Join a multi-player game
+   ```
+
+3. **Host:**  
+   ```bash
+   startgame <gameId>                           - Start the game room
+   ```
+
+4. **Players:**  
+   ```bash
+   ready <gameId>                               - Ready for the game
+   ```
+
+5. **Host:**  
+   ```bash
+   rungame <gameId>                             - Run the game room
+   ```
+
+6. **Anyone:**  
+   ```bash
+   leave <gameId>                               - Leave the game room
+   ```
+
+7. **Anyone:**  
+   ```bash
+   showactivegames                              - Show all active game rooms
+   ```
+
+8. **Anyone:**  
+   ```bash
+   multiplayerscoreboard
+   ```
+
+---
+
 ## **Additional Commands**
 
 - **Add a Word**  
@@ -110,18 +157,6 @@ Welcome to the COMP-4635 Assignment 2 repository. This document outlines the gam
   scoreboard
   ```
 
-- **Start a Multiplayer Game**  
-  *Command:*  
-  ```bash
-  startmultiplayer [numberOfPlayers] [level]
-  ```
-
-- **Join a Multiplayer Game**  
-  *Command:*  
-  ```bash
-  joinmultiplayer [gameId]
-  ```
-
 - **Quit the Game**  
   *Command:*  
   ```bash
@@ -130,7 +165,8 @@ Welcome to the COMP-4635 Assignment 2 repository. This document outlines the gam
 
 ---
 
-## **Shortcuts (After Starting Criss Cross Puzzle)**
+
+## **Shortcuts (After Starting Criss Cross Puzzle - Single Player)**
 
 - **`$`** : Display Score
 - **`!`** : Start New Game
