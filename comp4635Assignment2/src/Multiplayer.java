@@ -24,6 +24,7 @@ public class Multiplayer {
         if (numPlayers < 2) {
             throw new RemoteException("At least 2 players required to start multiplayer mode.\n");
         }
+
         int gameId = generateGameId();
         GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host);
         gameRooms.put(gameId, gameRoom);

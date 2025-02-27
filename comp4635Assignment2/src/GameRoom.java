@@ -80,15 +80,14 @@ public class GameRoom {
         warningRunGame();
         getCurrentActivePlayers();
         shufflePlayers();
-        puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel, wordServer);
+
+        puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel + players.size(), wordServer);
         puzzleServer.print_solution_puzzle();
 
         String result = startTurns();
-        System.out.println(result);
+        response.append(result);
 
-        isStarted = false;
-        isRun = false;
-        broadcastMessage("Game is terminated\n");
+        endGame();
 
         return response.toString();
     }
@@ -98,35 +97,55 @@ public class GameRoom {
                 + "Inactive player(s) will be removed from the game room\n");
     }
 
+    private void endGame() {
+        isStarted = false;
+        isRun = false;
+        broadcastMessage("Game is terminated\n");
+    }
+
     private String startTurns() {
+        boolean singlePlayerCase = false;
+        Player winner = null;
+        StringBuilder response = new StringBuilder();
+        List<String> addedWord = new ArrayList<>();
+
         while (!puzzleServer.is_All_words_are_guessed()) {
-            // Count the number of players who still have fail attempts left
+            // Count active players
             int activePlayers = 0;
             for (Player p : players) {
                 if (p.getCurrentFailAttempt() > 0) {
                     activePlayers++;
+                    winner = p; // Last-standing player if only one remains
                 }
             }
 
-            // If only one player has fail attempts remaining, end the game
-            if (activePlayers <= 1) {
-                broadcastMessage("Game over! Only one player remains with fail attempts.");
+            // If only one player is left, declare them the winner
+            if (activePlayers == 1) {
+                singlePlayerCase = true;
+                broadcastMessage("Game over! " + winner.getName() + " is the winner!");
                 break;
             }
 
-            // Find the next player with remaining fail attempts
-            while (players.get(currentTurnIndex).getCurrentFailAttempt() == 0) {
+            // Find the next available player
+            int attempts = players.size(); // Prevent infinite loops if all players are out
+            while (players.get(currentTurnIndex).getCurrentFailAttempt() == 0 && attempts > 0) {
                 broadcastMessage(
                         players.get(currentTurnIndex).getName() + " has no remaining fail attempts and is skipped.");
-                currentTurnIndex = (currentTurnIndex + 1) % players.size(); // Move to next player
+                currentTurnIndex = (currentTurnIndex + 1) % players.size();
+                attempts--;
+            }
+
+            // Safety check: If no valid players exist, end the game
+            if (attempts == 0) {
+                broadcastMessage("No active players left. Ending game.");
+                break;
             }
 
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
 
             broadcastMessage(puzzleServer.render_player_view_puzzle());
-            String message = currentPlayerName + ", it's your turn! Please type your word.";
-            broadcastMessage(message);
+            broadcastMessage(currentPlayerName + ", it's your turn! Please type your word.");
 
             try {
                 ClientCallback callback = playerCallbacks.get(currentPlayerName);
@@ -138,17 +157,24 @@ public class GameRoom {
                     } else {
                         broadcastMessage(currentPlayerName + " typed: " + playerInput);
 
-                        if (puzzleServer.is_guessed_word_correct(playerInput)) {
-                            currentPlayer.increaseScore();
-                            broadcastMessage("Player " + currentPlayerName + "'s guess is correct! Add 1 score");
-                            broadcastMessage(puzzleServer.render_player_view_puzzle());
+                        if (!addedWord.contains(playerInput)) {
+                            if (puzzleServer.is_guessed_word_correct(playerInput)) {
+                                addedWord.add(playerInput);
+                                currentPlayer.increaseScore();
+                                broadcastMessage("Player " + currentPlayerName + "'s guess is correct! Add 1 score");
+                                broadcastMessage(puzzleServer.render_player_view_puzzle());
+                            } else {
+                                currentPlayer.decrementFailAttempt();
+                                broadcastMessage(
+                                        "Player " + currentPlayerName + "'s guess is incorrect! Deduct 1 Fail Attempt");
+                            }
                         } else {
                             currentPlayer.decrementFailAttempt();
-                            broadcastMessage("Player " + currentPlayerName
-                                    + "'s guess is not correct!\nDeduct 1 Fail Attempt\n");
+                            broadcastMessage(
+                                    "Player " + currentPlayerName + "'s guess is duplicated! Deduct 1 Fail Attempt");
                         }
                         broadcastMessage("Earned Scores: " + currentPlayer.getScore());
-                        broadcastMessage("Current Fail Attempts: " + currentPlayer.getCurrentFailAttempt() + "\n");
+                        broadcastMessage("Remaining Fail Attempts: " + currentPlayer.getCurrentFailAttempt() + "\n");
                     }
                 } else {
                     broadcastMessage("Player " + currentPlayerName + " is unavailable and has been removed.");
@@ -158,11 +184,40 @@ public class GameRoom {
                 broadcastMessage("Error communicating with " + currentPlayerName + ". Removing player...");
                 removePlayer(currentPlayerName);
             }
+
             currentTurnIndex = (currentTurnIndex + 1) % players.size();
         }
 
-        broadcastMessage("Congratulations! All words have been guessed!");
-        return "Game Over";
+        // Determine winner if not decided by single-player elimination
+        if (!singlePlayerCase) {
+            winner = findWinner();
+        } else {
+            if (winner.getScore() == 0) {
+                winner = null;
+            }
+        }
+
+        // Ensure winner is valid before broadcasting
+        if (winner != null) {
+            response.append("WINNER: ").append(winner.getName()).append(" - Total Scores: ").append(winner.getScore())
+                    .append("\n");
+            broadcastMessage(response.toString());
+        } else {
+            response.append("No winner. Game ended with no active players.\n");
+            broadcastMessage("No winner. Game ended with no active players.");
+        }
+
+        return response.toString();
+    }
+
+    private Player findWinner() {
+        Player winner = players.get(0);
+        for (Player p : players) {
+            if (p.getScore() > winner.getScore()) {
+                winner = p;
+            }
+        }
+        return winner;
     }
 
     public synchronized String getCurrentPlayerTurn() {
