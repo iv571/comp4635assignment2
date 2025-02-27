@@ -17,6 +17,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Implementation of the UserAccountServer interface.
+ * <p>
+ * This class manages user accounts by storing account information in an in-memory map
+ * and persisting it to a file. It provides functionality for account creation, login,
+ * and score management (both individual and multiplayer scores). Passwords are hashed
+ * using SHA-256 for security.
+ * </p>
+ */
+
 public class UserAccountImpl extends UnicastRemoteObject implements UserAccountServer {
 
     private static final String ACCOUNTS_FILE = "accounts.txt";
@@ -38,7 +48,11 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
     }
 
     /**
-     * Hashes a password using SHA-256.
+     * Hashes the provided password using the SHA-256 algorithm.
+     *
+     * @param password the plain text password.
+     * @return the SHA-256 hash of the password in hexadecimal format.
+     * @throws RuntimeException if the SHA-256 algorithm is not available.
      */
     private String hashPassword(String password) {
         try {
@@ -59,6 +73,17 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
 
+    /**
+     * Creates a new account for the specified username with the given password.
+     * <p>
+     * The password is stored as a hash. If the account already exists, this method returns false.
+     * </p>
+     *
+     * @param username the username for the new account.
+     * @param password the plain text password.
+     * @return true if the account was created successfully; false if the account already exists.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized boolean createAccount(String username, String password) throws RemoteException {
         if (accounts.containsKey(username)) {
@@ -74,6 +99,14 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         return true;
     }
 
+    /**
+     * Logs in the user by verifying the provided password against the stored hash.
+     *
+     * @param username the username.
+     * @param password the plain text password.
+     * @return true if login is successful; false otherwise.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized boolean loginAccount(String username, String password) throws RemoteException {
         // Hash the provided password and compare it with the stored hash.
@@ -85,6 +118,13 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         return false;
     }
     
+    /**
+     * Updates the individual score for the specified user by the given delta.
+     *
+     * @param username the username.
+     * @param delta    the change in score (can be positive or negative).
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized void updateScore(String username, int delta) throws RemoteException {
         int newScore = scores.getOrDefault(username, 0) + delta;
@@ -94,13 +134,27 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         saveAccountsToFile();
     }
     
-    // Get the score for a given user.
+    /**
+     * Retrieves the individual score for the specified user.
+     *
+     * @param username the username.
+     * @return the user's individual score.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized int getScore(String username) throws RemoteException {
         return scores.getOrDefault(username, 0);
     }
     
-    // New method: get the scoreboard for all users.
+    /**
+     * Retrieves the sorted scoreboard for individual scores.
+     * <p>
+     * The scoreboard is sorted in descending order of scores.
+     * </p>
+     *
+     * @return an unmodifiable map of usernames to scores.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized Map<String, Integer> getScoreboard() throws RemoteException {
         // Create a list from the entries in the scores map.
@@ -119,7 +173,17 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
     }
     
     
-    
+    /**
+     * Retrieves a combined scoreboard that includes both individual and multiplayer scores.
+     * <p>
+     * Multiplayer scores are first read from file and then combined with the individual scores.
+     * The combined scoreboard is sorted in descending order by total score.
+     * </p>
+     *
+     * @return an unmodifiable map where each key is a username and the value is a string detailing
+     *         the individual and multiplayer scores.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized Map<String, String> getCombinedScoreboard() throws RemoteException {
         // First, read multiplayer scores from the file.
@@ -165,7 +229,12 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         return Collections.unmodifiableMap(sortedCombined);
     }
     
-    // Helper method: load accounts from file into the in-memory maps.
+   /**
+     * Loads account information from the accounts file into memory.
+     * <p>
+     * Each line in the file should be formatted as "username;hashedPassword;score".
+     * </p>
+     */
     private void loadAccountsFromFile() {
         File file = new File(ACCOUNTS_FILE);
         if (!file.exists()) {
@@ -213,6 +282,12 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
     
+    /**
+     * Loads multiplayer scores from the multiplayer scores file into memory.
+     * <p>
+     * Each line in the file should be formatted as "username;multiplayerScore".
+     * </p>
+     */
     private void loadMultiplayerScoresFromFile() {
         File file = new File(MULTIPLAYER_SCORES_FILE);
         if (!file.exists()) {
@@ -235,6 +310,9 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
     
+    /**
+     * Saves the current in-memory multiplayer scores to the multiplayer scores file.
+     */
     private synchronized void saveMultiplayerScoresToFile() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(MULTIPLAYER_SCORES_FILE))) {
             for (Map.Entry<String, Integer> entry : multiplayerScores.entrySet()) {
@@ -246,6 +324,16 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
     
+    /**
+     * Integrates multiplayer scores from a game session into the overall scores.
+     * <p>
+     * For each entry in the provided gameScores map, the multiplayer score is added to the stored value.
+     * Additionally, the individual persistent score is also updated.
+     * </p>
+     *
+     * @param gameScores a map of usernames to the score achieved in a game session.
+     * @throws RemoteException if a remote error occurs.
+     */
     @Override
     public synchronized void integrateMultiplayerScores(Map<String, Integer> gameScores) throws RemoteException {
         for (Map.Entry<String, Integer> entry : gameScores.entrySet()) {
@@ -266,7 +354,15 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         System.out.println("Integrated multiplayer scores from game session.");
     }
     
-    // Main method for starting the account server.
+    /**
+     * Main method to start the UserAccountServer.
+     * <p>
+     * This method creates or retrieves the RMI registry on port 1099 and binds this instance
+     * under the name "UserAccountServer".
+     * </p>
+     *
+     * @param args command-line arguments (not used).
+     */
     public static void main(String[] args) {
         try {
             UserAccountImpl accountServer = new UserAccountImpl();
@@ -284,6 +380,12 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
     }
     
+    /**
+     * Updates multiplayer scores from a GameRoom by integrating the provided game scores.
+     *
+     * @param gameScores a map of usernames to scores from a multiplayer game session.
+     * @throws RemoteException if a remote error occurs.
+     */
  
 	@Override
 	public synchronized void updateMultiplayerScoresFromGameRoom(Map<String, Integer> gameScores) throws RemoteException {

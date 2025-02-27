@@ -7,6 +7,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+/**
+ * Implementation of the ClientCallback interface.
+ * <p>
+ * This class extends provides mechanisms for receiving messages from the server, requesting player input,
+ * and notifying the client when it is their turn during a multi-player game.
+ * </p>
+ */
+
 public class ClientImpl extends UnicastRemoteObject implements ClientCallback {
 	
 	 // Declare a shared static BufferedReader for System.in
@@ -16,11 +24,24 @@ public class ClientImpl extends UnicastRemoteObject implements ClientCallback {
 
     private final Client client;  // Reference to the outer Client instance\
     
+    /**
+     * Constructs a new ClientImpl instance.
+     *
+     * @param client the Client instance that owns this callback implementation.
+     * @throws RemoteException if an RMI error occurs during export.
+     */
     public ClientImpl(Client client) throws RemoteException {
     	super();
     	this.client = client;
     }
 
+    /**
+     * Receives a message from the server and displays it to the user.
+     * If the client is in multi-player mode with an active game, it also displays the prompt.
+     *
+     * @param message the message sent by the server.
+     * @throws RemoteException if a remote communication error occurs.
+     */
     @Override
     public void receiveMessage(String message) throws RemoteException {
         System.out.println("\n[SERVER MESSAGE]: " + message);
@@ -29,6 +50,14 @@ public class ClientImpl extends UnicastRemoteObject implements ClientCallback {
         }
     }
 
+    /**
+     * Requests player input by polling the shared input queue.
+     * This method waits for input for a limited time before returning.
+     *
+     * @param playerName the name of the player requesting input.
+     * @return the input string from the player, or an empty string if the timeout expires.
+     * @throws RemoteException if a remote communication error occurs.
+     */
     @Override
     public String requestPlayerInput(String playerName) throws RemoteException {
         try {
@@ -40,11 +69,28 @@ public class ClientImpl extends UnicastRemoteObject implements ClientCallback {
             return "";
         }
     }
-    // This method will be called by the main loop to feed input into the queue.
+    
+    /**
+     * Adds input from the player into the shared input queue.
+     * 
+     * This method can be called by the main client loop to supply input asynchronously
+     * to the ClientImpl for processing.
+     * 
+     *
+     * @param input the input string to be added to the queue.
+     */
     public static void addInput(String input) {
         inputQueue.offer(input);
     }
 
+    /**
+     * Notifies the client that it is their turn in the multi-player game.
+     
+     * This method sets the client's turn flag to true.
+     
+     *
+     * @throws RemoteException if a remote communication error occurs.
+     */
 	@Override
 	public void notifyTurn() throws RemoteException {
 		// TODO Auto-generated method stub

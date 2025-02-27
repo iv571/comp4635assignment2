@@ -8,6 +8,14 @@ import java.util.Map;
 import java.util.Collections;
 import java.util.Iterator;
 
+/**
+ * Represents a multi-player game room where players can join,
+ * get marked as ready, and participate in a multi-player puzzle game.
+ * <p>
+ * The game room maintains the list of players, their callbacks,
+ * active status, and handles the game flow such as starting and running the game.
+ * </p>
+ */
 public class GameRoom {
     private int gameId;
     private int numPlayers;
@@ -23,7 +31,16 @@ public class GameRoom {
     UserAccountServer accountServer;
     private ClientCallback hostCallback;  // new field
 
-
+    /**
+     * Constructs a new GameRoom.
+     *
+     * @param gameId       the unique game room identifier.
+     * @param numPlayers   the maximum number of players allowed.
+     * @param gameLevel    the difficulty level of the game.
+     * @param host         the host player's name.
+     * @param hostCallback the callback interface for the host.
+     * @throws IllegalArgumentException if the host callback is null.
+     */
     public GameRoom(int gameId, int numPlayers, int gameLevel, String host, ClientCallback hostCallback) {
     	 if (hostCallback == null) {
     	        throw new IllegalArgumentException("Host callback cannot be null");
@@ -55,6 +72,13 @@ public class GameRoom {
         playerCallbacks.put(host, hostCallback);
     }
 
+    /**
+     * Adds a player to the game room.
+     *
+     * @param playerName the name of the player to add.
+     * @param callback   the callback interface for the player.
+     * @return true if the player was added successfully; false if the room is full or the player already exists.
+     */
     public boolean addPlayer(String playerName, ClientCallback callback) {
         if (players.size() < numPlayers) {
         	// Prevent duplicate entries
@@ -69,6 +93,16 @@ public class GameRoom {
         return false;
     }
 
+    /**
+     * Starts the game room.
+     * <p>
+     * Only the host can start the game. This method marks the host as active,
+     * sets the game as started, and broadcasts instructions to all players.
+     * </p>
+     *
+     * @param hostName the name of the host attempting to start the game.
+     * @return a response message indicating the result of the start attempt.
+     */
     public synchronized String startGame(String hostName) {
         StringBuilder response = new StringBuilder();
 
@@ -102,6 +136,18 @@ public class GameRoom {
         return response.toString();
     }
 
+    /**
+     * Runs the game in the game room.
+     * <p>
+     * Only the host can run the game. This method removes players who are not ready,
+     * ensures the host is first in turn order, shuffles the players,
+     * initializes the puzzle, and broadcasts the puzzle state.
+     * </p>
+     *
+     * @param player     the name of the player invoking runGame.
+     * @param wordServer the WordRepositoryServer instance.
+     * @return a response message indicating the game is running.
+     */
     public synchronized String runGame(String player, WordRepositoryServer wordServer) {
         StringBuilder response = new StringBuilder();
         
@@ -133,11 +179,23 @@ public class GameRoom {
         return response.toString();
     }
    
+    /**
+     * Broadcasts a warning message that the host has run the game.
+     */
 	private void warningRunGame() {
         broadcastMessage("Host has run the game - Initializing the game...\n"
                 + "Inactive player(s) will be removed from the game room\n");
     }
 
+	 /**
+     * Starts the turns for the game.
+     * <p>
+     * For each active player, the method prompts for input, waits for the player's guess,
+     * and processes the guess. It then broadcasts the updated puzzle state.
+     * </p>
+     *
+     * @return a message indicating the end of the turn sequence.
+     */
     private String startTurns() {
         while (currentTurnIndex < players.size()) {
             Player currentPlayer = players.get(currentTurnIndex);
@@ -192,6 +250,11 @@ public class GameRoom {
         return "End";
     }
 
+    /**
+     * Retrieves the name of the current player's turn.
+     *
+     * @return the current player's name, or null if no players exist.
+     */
     public synchronized String getCurrentPlayerTurn() {
         if (players.isEmpty()) {
             return null; // No players in the game
@@ -199,6 +262,12 @@ public class GameRoom {
         return players.get(currentTurnIndex).getName();
     }
 
+    /**
+     * Removes any disconnected players from the players list.
+     * 
+     * A player is considered disconnected if their callback is null.
+     * 
+     */
     private void getCurrentActivePlayers() {
         // Instead of removing players who are not marked as active,
         // only remove players whose callback is null (indicating a disconnection)
@@ -212,6 +281,12 @@ public class GameRoom {
             }
         }
     }
+    
+    /**
+     * Broadcasts a message to all players in the game room.
+     *
+     * @param message the message to broadcast.
+     */
     public void broadcastMessage(String message) {
         for (Map.Entry<String, ClientCallback> entry : playerCallbacks.entrySet()) {
             String playerName = entry.getKey();
@@ -279,6 +354,12 @@ public class GameRoom {
         }
     }
 
+    /**
+     * Marks a player as ready in the game room.
+     *
+     * @param player the player's name.
+     * @return a response message indicating whether the player was marked as ready.
+     */
     public synchronized String setActivePlayer(String player) {
         StringBuilder response = new StringBuilder();
         boolean playerExists = playerExists(player);
@@ -296,6 +377,12 @@ public class GameRoom {
         return response.toString();
     }
 
+    /**
+     * Removes a player from the game room.
+     *
+     * @param player the player's name.
+     * @return a response message indicating the player has left the room.
+     */
     public synchronized String leaveRoom(String player) {
         StringBuilder response = new StringBuilder();
 
@@ -316,6 +403,12 @@ public class GameRoom {
         return response.toString();
     }
 
+    /**
+     * Checks if a player with the given name exists in the game room.
+     *
+     * @param playerName the player's name.
+     * @return true if the player exists; false otherwise.
+     */
     private boolean playerExists(String playerName) {
         for (Player p : players) {
             if (p.getName().equals(playerName)) {
@@ -325,38 +418,84 @@ public class GameRoom {
         return false;
     }
 
+    /**
+     * Removes a player from the game room.
+     *
+     * @param playerName the name of the player to remove.
+     * @return true if the player was removed; false otherwise.
+     */
     synchronized boolean removePlayer(String playerName) {
         return players.removeIf(player -> player.getName().equals(playerName));
     }
 
+    /**
+     * Returns whether the game has been started.
+     *
+     * @return true if the game is started; false otherwise.
+     */
     public synchronized boolean isStarted() {
         return this.isStarted;
     }
 
+    /**
+     * Returns whether the game is currently running.
+     *
+     * @return true if the game is running; false otherwise.
+     */
     public synchronized boolean isGameRun() {
         return this.isRun;
     }
 
+    /**
+     * Gets the number of remaining spots in the game room.
+     *
+     * @return the number of spots remaining.
+     */
     public int getRemainingSpot() {
         return this.numPlayers - this.players.size();
     }
 
+    /**
+     * Gets the current number of players in the game room.
+     *
+     * @return the player count.
+     */
     public int getPlayerCount() {
         return players.size();
     }
 
+    /**
+     * Returns the unique identifier for the game room.
+     *
+     * @return the game room ID.
+     */
     public int getGameId() {
         return this.gameId;
     }
 
+    /**
+     * Returns the host player's name.
+     *
+     * @return the host name.
+     */
     public String getHost() {
         return this.host;
     }
 
+    /**
+     * Returns the total number of players expected in the game room.
+     *
+     * @return the total number of players.
+     */
     public int getTotalPlayers() {
         return this.numPlayers;
     }
     
+    /**
+     * Retrieves the current multi-player scores.
+     *
+     * @return a mapping of player names to their scores.
+     */
     public synchronized Map<String, Integer> getMultiplayerScores() {
         Map<String, Integer> scores = new HashMap<>();
         for (Player player : players) {
