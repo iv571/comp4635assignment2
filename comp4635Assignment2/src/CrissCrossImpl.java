@@ -402,7 +402,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                     UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-                    accountServer.updateScore(player, -1);
+                    accountServer.updateScore(player, -1, false);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -417,7 +417,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             try {
                 Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                 UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-                accountServer.updateScore(player, 1);
+                accountServer.updateScore(player, 1, false);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -496,7 +496,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                     UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-                    accountServer.updateScore(player, 1);
+                    accountServer.updateScore(player, 1, false);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -510,7 +510,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                     UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
-                    accountServer.updateScore(player, -1);
+                    accountServer.updateScore(player, -1, false);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

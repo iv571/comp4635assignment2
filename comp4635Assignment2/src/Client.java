@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.util.StringTokenizer;
+import java.util.regex.*;
 
 public class Client {
     private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
@@ -35,6 +36,7 @@ public class Client {
         joinmultiplayer, // join the multiplayer game
         startgameroom, // start the game room (Only host can start)
         showactivegames, // show existing game room
+        multiscoreboard, // view multiplayer scoreboard
         ready, // ready for the game room
         leave, // leave the game room
         rungame, // run the game
@@ -183,12 +185,12 @@ public class Client {
             try {
                 if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
                         && puzzleServer.isActiveRoom(activeGameID)) {
-                    System.out.println("WAITING IN MULTIPLAYER MODE...\n");
+                    System.out.println("WAITING FOR THE HOST TO START THE GAME - HANG ON.....\n");
                 } else {
-                    System.out.println("NORMAL MODE\nExecutreCommand\n");
+                    // System.out.println("NORMAL MODE\nExecutreCommand\n");
                     String userInput = consoleIn.readLine();
                     execute(parse(userInput), clientname);
-                    System.out.println("INNER\n");
+                    // System.out.println("INNER\n");
                 }
             } catch (RejectedException re) {
                 System.out.println(re);
@@ -431,6 +433,22 @@ public class Client {
                     if (activeGameID != -1 && roomId == activeGameID && puzzleServer.isActiveRoom(activeGameID)) {
                         String runMPResponse = puzzleServer.runGame(username, activeGameID, wordServer);
                         System.out.println(runMPResponse);
+                        if (!runMPResponse.equals("No winner. Game ended with no active players.\\n")
+                                || !runMPResponse.equals("Only the host can run the game!\\n" + //
+                                        "")) {
+                            runMPResponse = runMPResponse.trim();
+                            Pattern pattern = Pattern.compile("WINNER: (.+?) - Total Scores: (\\d+)");
+                            Matcher matcher = pattern.matcher(runMPResponse);
+                            if (matcher.find()) {
+                                String winnerName = matcher.group(1); // Extract name
+                                int score = Integer.parseInt(matcher.group(2)); // Extract score as integer
+                                accountServer.updateScore(winnerName, score, true);
+                                // System.out.println("Winner: " + winnerName);
+                                // System.out.println("Score: " + score);
+                            } else {
+                                System.out.println("No match found.");
+                            }
+                        }
                     } else {
                         System.out.println("This is not active game id");
                     }
@@ -446,7 +464,7 @@ public class Client {
                     System.out.println(readyMPResponse);
                     if (readyMPResponse.equals("You have been marked as ready.\n")) {
                         activeGameID = roomId;
-                        System.out.println("Hello " + activeGameID);
+                        // System.out.println("Hello " + activeGameID);
                         System.out
                                 .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
                     }
@@ -478,7 +496,24 @@ public class Client {
                 case scoreboard:
                     try {
                         // Retrieve the scoreboard map from the account server.
-                        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard();
+                        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard(false);
+                        System.out.println("---- Scoreboard ----");
+                        if (scoreboard.isEmpty()) {
+                            System.out.println("No scores available.");
+                        } else {
+                            for (java.util.Map.Entry<String, Integer> entry : scoreboard.entrySet()) {
+                                System.out.println(entry.getKey() + " : " + entry.getValue());
+                            }
+                        }
+                        System.out.println("--------------------");
+                    } catch (RemoteException e) {
+                        System.out.println("Error retrieving scoreboard: " + e.getMessage());
+                    }
+                    break;
+                case multiscoreboard:
+                    try {
+                        // Retrieve the scoreboard map from the account server.
+                        java.util.Map<String, Integer> scoreboard = accountServer.getScoreboard(true);
                         System.out.println("---- Scoreboard ----");
                         if (scoreboard.isEmpty()) {
                             System.out.println("No scores available.");
@@ -576,6 +611,7 @@ public class Client {
         System.out.println("|   ready <gameId>                               - Ready for the game         |");
         System.out.println("|   leave  <gameId>                              - Leave the game room        |");
         System.out.println("|   showactivegames                              - Show all active game rooms |");
+        System.out.println("|   multiscoreboard                              - Show the score board       |");
         System.out.println("|                                                                             |");
         System.out.println(border);
         System.out.println("|                                                                             |");

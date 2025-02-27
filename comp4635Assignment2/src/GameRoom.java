@@ -61,7 +61,7 @@ public class GameRoom {
                     + "> has started the game: \n"
                     + "1.Type 'ready <game id>' if you are ready\n"
                     + "2.Type 'leave <game id>' if you want to quit the room\n"
-                    + "NOTE:\n- Once host runs the game, you will be removed from the game room\n"
+                    + "NOTE:\n- Once host runs the game, you will be removed from the game room if you are not ready\n"
                     + "- Once you are ready, you cannot the quit the game\n");
         }
 
@@ -173,8 +173,10 @@ public class GameRoom {
                             broadcastMessage(
                                     "Player " + currentPlayerName + "'s guess is duplicated! Deduct 1 Fail Attempt");
                         }
-                        broadcastMessage("Earned Scores: " + currentPlayer.getScore());
-                        broadcastMessage("Remaining Fail Attempts: " + currentPlayer.getCurrentFailAttempt() + "\n");
+                        broadcastMessage(
+                                "Player " + currentPlayerName + " - Earned Scores: " + currentPlayer.getScore());
+                        broadcastMessage("Player " + currentPlayerName + " - Remaining Fail Attempts: "
+                                + currentPlayer.getCurrentFailAttempt() + "\n");
                     }
                 } else {
                     broadcastMessage("Player " + currentPlayerName + " is unavailable and has been removed.");
@@ -211,10 +213,19 @@ public class GameRoom {
     }
 
     private Player findWinner() {
+        if (players.isEmpty()) {
+            return null; // No players available
+        }
+
         Player winner = players.get(0);
         for (Player p : players) {
             if (p.getScore() > winner.getScore()) {
                 winner = p;
+            } else if (p.getScore() == winner.getScore()) {
+                // If scores are the same, compare fail attempts
+                if (p.getCurrentFailAttempt() > winner.getCurrentFailAttempt()) {
+                    winner = p;
+                }
             }
         }
         return winner;

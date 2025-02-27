@@ -20,11 +20,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UserAccountImpl extends UnicastRemoteObject implements UserAccountServer {
 
     private static final String ACCOUNTS_FILE = "accounts.txt";
-    
+
     // In-memory maps for accounts and scores.
     // Accounts map now stores username -> hashedPassword
     private Map<String, String> accounts = new HashMap<>();
     private Map<String, Integer> scores = new ConcurrentHashMap<>();
+    private Map<String, Integer> multiplayerScore = new ConcurrentHashMap<>();
 
     // Load accounts from file upon instantiation.
     protected UserAccountImpl() throws RemoteException {
@@ -79,40 +80,52 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
         }
         return false;
     }
-    
+
     @Override
-    public synchronized void updateScore(String username, int delta) throws RemoteException {
-        int newScore = scores.getOrDefault(username, 0) + delta;
-        scores.put(username, newScore);
-        System.out.println("Updated score for " + username + " by " + delta 
+    public void updateScore(String username, int score, boolean multiplayerMode) throws RemoteException {
+        int newScore;
+        if (!multiplayerMode) {
+            newScore = scores.getOrDefault(username, 0) + score;
+            scores.put(username, newScore);
+        } else {
+            newScore = multiplayerScore.getOrDefault(username, 0) + score;
+            multiplayerScore.put(username, newScore);
+        }
+        System.out.println("Updated score for " + username + " by " + score
                 + ". New score: " + newScore);
         saveAccountsToFile();
     }
-    
+
     // Get the score for a given user.
     @Override
     public synchronized int getScore(String username) throws RemoteException {
         return scores.getOrDefault(username, 0);
     }
-    
+
     // New method: get the scoreboard for all users.
     @Override
-    public synchronized Map<String, Integer> getScoreboard() throws RemoteException {
+    public synchronized Map<String, Integer> getScoreboard(boolean multimode) throws RemoteException {
         // Create a list from the entries in the scores map.
-        List<Map.Entry<String, Integer>> list = new ArrayList<>(scores.entrySet());
-        
+        List<Map.Entry<String, Integer>> list;
+
+        if (!multimode) {
+            list = new ArrayList<>(scores.entrySet());
+        } else {
+            list = new ArrayList<>(multiplayerScore.entrySet());
+        }
+
         // Sort the list in descending order by score.
         Collections.sort(list, (e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-        
+
         // Create a LinkedHashMap to preserve the sorted order.
         Map<String, Integer> sortedMap = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> entry : list) {
             sortedMap.put(entry.getKey(), entry.getValue());
         }
-        
+
         return Collections.unmodifiableMap(sortedMap);
     }
-    
+
     // Helper method: load accounts from file into the in-memory maps.
     private void loadAccountsFromFile() {
         File file = new File(ACCOUNTS_FILE);
@@ -145,7 +158,7 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
             System.err.println("Error reading " + ACCOUNTS_FILE + ": " + e.getMessage());
         }
     }
-    
+
     // Helper method: save the in-memory accounts and scores to file.
     private synchronized void saveAccountsToFile() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(ACCOUNTS_FILE))) {
@@ -160,7 +173,7 @@ public class UserAccountImpl extends UnicastRemoteObject implements UserAccountS
             System.err.println("Error writing to " + ACCOUNTS_FILE + ": " + e.getMessage());
         }
     }
-    
+
     // Main method for starting the account server.
     public static void main(String[] args) {
         try {
