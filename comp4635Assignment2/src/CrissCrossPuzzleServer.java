@@ -25,6 +25,8 @@ public interface CrissCrossPuzzleServer extends Remote {
 
 	public boolean checkWord(String word) throws RemoteException;
 
+	public String startMultiGame(String username, int numPlayers, int level) throws RemoteException, RejectedException;
+
 	public String joinMultiGame(String player, int gameId, ClientCallback callback)
 			throws RemoteException, RejectedException;
 
@@ -41,9 +43,4 @@ public interface CrissCrossPuzzleServer extends Remote {
 	public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException;
 
 	public String showActiveGameRooms() throws RemoteException;
-
-	String startMultiGame(String username, int numPlayers, int level, ClientCallback hostCallback)
-			throws RemoteException, RejectedException;
-
-	public void submitGuess(int activeGameID, String clientname, String trim) throws RemoteException;
 }

@@ -16,16 +16,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
-/**
- * Implementation of the CrissCrossPuzzleServer interface.
- * <p>
- * This class is responsible for managing single-player game sessions,
- * handling word commands (add, remove, check), constructing puzzles,
- * and delegating multi-player game functionality to the Multiplayer manager.
- * It extends UnicastRemoteObject for RMI-based remote invocation.
- * </p>
- */
-
 @SuppressWarnings("serial")
 public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuzzleServer {
 
@@ -38,22 +28,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     // multiplayer manager
     private Multiplayer multiplayerManager = new Multiplayer();
 
-    /**
-     * Constructs a new CrissCrossImpl instance and connects to the WordRepositoryServer.
-     *
-     * @param bankName an identifier (unused) for this instance.
-     * @throws RemoteException if an RMI error occurs.
-     */
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
         connectToWordRepository();
     }
 
-    /**
-     * Inner class representing a game session for a single player.
-     * Contains the puzzle state, vertical stem, horizontal words,
-     * formatted and revealed puzzles, and the number of failed attempts allowed.
-     */
+    // Inner class to represent a game session per player.
     private class GameSession {
         String verticalStem;
         String[] horizontalWords;
@@ -77,8 +57,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     /**
-     * Attempts to reconnect to the WordRepositoryServer with multiple retries.
-     * If all attempts fail, the wordServer reference is set to null.
+     * Attempt to reconnect to the WordRepositoryServer with multiple retries.
      */
     private void reconnectWordRepository() {
         int maxAttempts = 3;
@@ -103,14 +82,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     // ===============================
     // Implementation of word commands
     // ===============================
-    
-    /**
-     * Adds a word to the WordRepository.
-     *
-     * @param word the word to be added.
-     * @return true if the word was added successfully, false otherwise.
-     * @throws RemoteException if a remote error occurs or the WordRepositoryServer is unavailable.
-     */
 
     @Override
     public boolean addWord(String word) throws RemoteException {
@@ -137,14 +108,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             }
         }
     }
-    
-    /**
-     * Removes a word from the WordRepository.
-     *
-     * @param word the word to be removed.
-     * @return true if the word was removed successfully, false otherwise.
-     * @throws RemoteException if a remote error occurs or the WordRepositoryServer is unavailable.
-     */
+
     @Override
     public boolean removeWord(String word) throws RemoteException {
         if (wordServer == null) {
@@ -171,13 +135,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         }
     }
 
-    /**
-     * Checks if a word exists in the WordRepository.
-     *
-     * @param word the word to be checked.
-     * @return true if the word exists, false otherwise.
-     * @throws RemoteException if a remote error occurs or the WordRepositoryServer is unavailable.
-     */
     @Override
     public boolean checkWord(String word) throws RemoteException {
         if (wordServer == null) {
@@ -204,12 +161,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         }
     }
 
-    /**
-     * Retrieves a random word from the "words.txt" file with a minimum length.
-     *
-     * @param minLength the minimum length required for the word.
-     * @return a random word meeting the criteria, or an empty string if none found.
-     */
     private String getRandomWordFromFile(int minLength) {
         List<String> words = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
@@ -230,15 +181,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return words.get(rand.nextInt(words.size()));
     }
 
-    /**
-     * Retrieves a random word from the file that contains a specific character constraint.
-     *
-     * @param constraint         the character that must appear exactly once in the word.
-     * @param minLength          the minimum length for the word.
-     * @param verticalStemLength the length of the vertical stem.
-     * @param colForStem         the column where the vertical stem is placed.
-     * @return a valid word that meets the constraint, or an empty string if none found.
-     */
     private String getConstrainedRandomWord(char constraint, int minLength, int verticalStemLength, int colForStem) {
         List<String> validWords = new ArrayList<>();
         char lowerConstraint = Character.toLowerCase(constraint);
@@ -288,13 +230,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return count;
     }
 
-    /**
-     * Constructs the puzzle grid using a vertical stem and horizontal words.
-     *
-     * @param verticalStem  the vertical word forming the stem.
-     * @param horizontalWords array of horizontal words.
-     * @return a 2D character array representing the puzzle grid.
-     */
     private char[][] constructPuzzle(String verticalStem, String[] horizontalWords) {
         int numRows = verticalStem.length();
 
@@ -336,12 +271,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return grid;
     }
 
-    /**
-     * Counts the number of letters in the puzzle (non-placeholder characters).
-     *
-     * @param puzzle the 2D character array representing the puzzle.
-     * @return the count of letters in the puzzle.
-     */
     private int countPuzzleLetters(char[][] puzzle) {
         int count = 0;
         for (char[] row : puzzle) {
@@ -354,12 +283,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return count;
     }
 
-    /**
-     * Formats the puzzle for display by replacing revealed letters with underscores.
-     *
-     * @param puzzle the 2D character array representing the puzzle.
-     * @return a formatted string of the puzzle.
-     */
     private String formatPuzzle(char[][] puzzle) {
         // Formats puzzle so that unrevealed letters appear as underscores ('_')
         StringBuilder sb = new StringBuilder();
@@ -372,12 +295,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return sb.toString();
     }
 
-    /**
-     * Reveals the complete puzzle solution.
-     *
-     * @param puzzle the 2D character array representing the puzzle.
-     * @return a string representation of the fully revealed puzzle.
-     */
     private String revealPuzzle(char[][] puzzle) {
         // Formats the puzzle to reveal the solution.
         StringBuilder sb = new StringBuilder();
@@ -390,50 +307,25 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return sb.toString();
     }
 
-    /**
-     * Synchronized helper method to add a player's game session.
-     *
-     * @param player  the player's name.
-     * @param session the GameSession object for the player.
-     */
+    // Helper methods to synchronize access to sessions.
     private void putSession(String player, GameSession session) {
         synchronized (sessions) {
             sessions.put(player, session);
         }
     }
 
-    /**
-     * Synchronized helper method to retrieve a player's game session.
-     *
-     * @param player the player's name.
-     * @return the GameSession object for the player, or null if none exists.
-     */
     private GameSession getSession(String player) {
         synchronized (sessions) {
             return sessions.get(player);
         }
     }
 
-    /**
-     * Synchronized helper method to remove a player's game session.
-     *
-     * @param player the player's name.
-     */
     private void removeSession(String player) {
         synchronized (sessions) {
             sessions.remove(player);
         }
     }
 
-    /**
-     * Starts a new single-player game session for the given player.
-     *
-     * @param player            the player's name.
-     * @param level             the game difficulty level.
-     * @param failedAttemptFactor a factor to calculate allowed failed attempts.
-     * @return a string message containing the formatted puzzle and allowed attempts.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
         // Clamp the level between 1 and 10.
@@ -487,14 +379,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 "\nAttempts allowed: " + session.failAttempts;
     }
 
-    /**
-     * Processes a letter guess from the player.
-     *
-     * @param player the player's name.
-     * @param letter the letter guessed.
-     * @return a string message with the updated puzzle state or game over message.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String guessLetter(String player, char letter) throws RemoteException {
         GameSession session = getSession(player);
@@ -543,14 +427,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 "\nAttempts remaining: " + session.failAttempts;
     }
 
-    /**
-     * Processes a word guess from the player.
-     *
-     * @param player the player's name.
-     * @param word   the word guessed.
-     * @return a string message with the updated puzzle state or game over message.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String guessWord(String player, String word) throws RemoteException {
         GameSession session = getSession(player);
@@ -645,14 +521,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                     + session.failAttempts;
         }
     }
-    
-    /**
-     * Ends the current game session for a player.
-     *
-     * @param player the player's name.
-     * @return a string message with the final solution.
-     * @throws RemoteException if a remote error occurs.
-     */
+
     @Override
     public String endGame(String player) throws RemoteException {
         GameSession session = sessions.remove(player);
@@ -662,13 +531,6 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return "Game ended for " + player + ".\nThe solution was:\n" + session.revealedPuzzle;
     }
 
-    /**
-     * Restarts the game session for a player with default parameters.
-     *
-     * @param player the player's name.
-     * @return a string message from the newly started game.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public synchronized String restartGame(String player) throws RemoteException {
         sessions.remove(player);
@@ -676,33 +538,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return startGame(player, 5, 3);
     }
 
-    /**
-     * Starts a new multi-player game room.
-     *
-     * @param username    the host player's name.
-     * @param numPlayers  the number of players expected.
-     * @param level       the game difficulty level.
-     * @param hostCallback the host's callback interface.
-     * @return a message indicating the status of starting the multi-player game.
-     * @throws RemoteException if a remote error occurs.
-     * @throws RejectedException if the request is rejected.
-     */
     @Override
-    public synchronized String startMultiGame(String username, int numPlayers, int level, ClientCallback hostCallback)
+    public synchronized String startMultiGame(String username, int numPlayers, int level)
             throws RemoteException, RejectedException {
-        return multiplayerManager.startMultiGame(username, numPlayers, level, hostCallback);
+        return multiplayerManager.startMultiGame(username, numPlayers, level);
     }
 
-    /**
-     * Allows a player to join an existing multi-player game room.
-     *
-     * @param player   the player's name.
-     * @param gameId   the game room identifier.
-     * @param callback the player's callback interface.
-     * @return a message indicating the status of joining the game room.
-     * @throws RemoteException if a remote error occurs.
-     * @throws RejectedException if the request is rejected.
-     */
     @Override
     public synchronized String joinMultiGame(String player, int gameId, ClientCallback callback)
             throws RemoteException, RejectedException {
@@ -710,104 +551,38 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         return multiplayerManager.joinMultiGame(player, gameId, callback);
     }
 
-    /**
-     * Returns a list of active multi-player game rooms.
-     *
-     * @return a string listing active game rooms.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String showActiveGameRooms() throws RemoteException {
         return multiplayerManager.showActiveGameRooms();
     }
 
-    /**
-     * Starts the game room for a multi-player game.
-     *
-     * @param hostName the host player's name.
-     * @param gameId   the game room identifier.
-     * @return a message indicating the status of starting the game room.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String startGameRoom(String hostName, int gameId) throws RemoteException {
         return multiplayerManager.startGameRoom(hostName, gameId);
     }
 
-    /**
-     * Sets the active player for a multi-player game room.
-     *
-     * @param player the player's name.
-     * @param gameId the game room identifier.
-     * @return a message indicating the result of marking the player as active.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String setActivePlayer(String player, int gameId) throws RemoteException {
         return multiplayerManager.setActivePlayer(player, gameId);
     }
 
-    /**
-     * Removes a player from a multi-player game room.
-     *
-     * @param player the player's name.
-     * @param gameId the game room identifier.
-     * @return a message indicating the result of leaving the room.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String leaveRoom(String player, int gameId) throws RemoteException {
         return multiplayerManager.leaveRoom(player, gameId);
     }
 
-    /**
-     * Checks if a given game room is active.
-     *
-     * @param gameId the game room identifier.
-     * @return true if the room is active, false otherwise.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public boolean isActiveRoom(int gameId) throws RemoteException {
         return multiplayerManager.isActiveRoom(gameId);
     }
-    
-    /**
-     * Checks if a multi-player game is currently running.
-     *
-     * @param gameId the game room identifier.
-     * @return true if the game is running, false otherwise.
-     * @throws RemoteException if a remote error occurs.
-     */
+
     @Override
     public boolean isGameRun(int gameId) throws RemoteException {
         return multiplayerManager.isGameRun(gameId);
     }
 
-    /**
-     * Runs the multi-player game for a specific room.
-     *
-     * @param player     the player's name.
-     * @param roomId     the game room identifier.
-     * @param wordServer the WordRepositoryServer instance.
-     * @return a message indicating the game state.
-     * @throws RemoteException if a remote error occurs.
-     */
     @Override
     public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
         return multiplayerManager.runGame(player, roomId, wordServer);
-    }
-    
-    /**
-     * Processes a guess submitted by a player in a multi-player game.
-     *
-     * @param gameId the game room identifier.
-     * @param player the player's name.
-     * @param guess  the guess submitted by the player.
-     * @throws RemoteException if a remote error occurs.
-     */
-    @Override
-    public void submitGuess(int gameId, String player, String guess) throws RemoteException {
-        multiplayerManager.processGuess(gameId, player, guess);
     }
 }

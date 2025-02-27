@@ -13,7 +13,7 @@ public class Main {
 		
 		boolean GAME_OVER = false;
 		
-		Mutiplayer_Puzzle puzzle = new Mutiplayer_Puzzle(5,5, wordServer);
+		Mutiplayer_Puzzle puzzle = new Mutiplayer_Puzzle(6,2, wordServer);
 		
 		while (!GAME_OVER) {
 			

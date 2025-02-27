@@ -5,24 +5,11 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-/**
- * The GameServer class initializes and binds the CrissCrossPuzzleServer implementation to the RMI registry.
- * <p>
- * It sets up the RMI registry on the specified port, creates an instance of the game server,
- * and binds it to a specific RMI URL so that clients can look it up and invoke remote methods.
- * </p>
- */
-
 public class GameServer {
     private static final String USAGE = "java GameServer <rmi_url>";
     private static final String HOST = "localhost";
     private static final int REGISTRY_PORT = 1099;
 
-    /**
-     * Constructs a new GameServer instance and binds the CrissCrossPuzzleServer implementation to the RMI registry.
-     *
-     * @param name a string used to initialize the game server (e.g., to differentiate instances).
-     */
     public GameServer(String name) {
         try {
         	// Create or get the RMI registry
@@ -68,15 +55,6 @@ public class GameServer {
         }
     }
 
-    /**
-     * The entry point of the GameServer.
-     * 
-     * The main method parses command-line arguments to optionally set the server name,
-     * and then instantiates the GameServer.
-     * 
-     *
-     * @param args command-line arguments. If an argument is provided, it is used as the server name.
-     */
     public static void main(String[] args) {
         if (args.length > 1 || (args.length > 0 && args[0].equalsIgnoreCase("-h"))) {
             System.out.println(USAGE);
