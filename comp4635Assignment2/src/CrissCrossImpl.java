@@ -1,5 +1,6 @@
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.rmi.Naming;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
@@ -27,9 +29,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     // multiplayer manager
     private Multiplayer multiplayerManager = new Multiplayer();
+    
+    // FailureDetector instance will be created with configurable values.
+    private FailureDetector failureDetector;
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
+        loadConfigAndInitializeFailureDetector();
         connectToWordRepository();
     }
 
@@ -42,6 +48,22 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         String revealedPuzzle;
         int failAttempts;
         // Additional game state (e.g., score) could be added here.
+    }
+    
+    private void loadConfigAndInitializeFailureDetector() {
+        Properties config = new Properties();
+        try (FileInputStream fis = new FileInputStream("failureconfig.properties")) {
+            config.load(fis);
+        } catch (IOException e) {
+            System.err.println("Could not load configuration file, using defaults.");
+        }
+        
+        long toleranceMillis = Long.parseLong(config.getProperty("toleranceMillis", "6000"));
+        int xFactor = Integer.parseInt(config.getProperty("xFactor", "3"));
+        long checkIntervalMillis = Long.parseLong(config.getProperty("checkIntervalMillis", "1000"));
+        
+        // Create the failure detector with the loaded (or default) values.
+        failureDetector = new FailureDetector(toleranceMillis, xFactor, checkIntervalMillis);
     }
 
     /**
@@ -328,6 +350,8 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     @Override
     public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
+    	failureDetector.registerClient(player);
+        failureDetector.updateClientActivity(player);
         // Clamp the level between 1 and 10.
         int effectiveLevel = Math.max(1, Math.min(level, 10));
         // effectiveLevel now controls the number of horizontal words generated.
@@ -524,10 +548,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
 
     @Override
     public String endGame(String player) throws RemoteException {
+    	failureDetector.updateClientActivity(player);
         GameSession session = sessions.remove(player);
         if (session == null) {
             return "No active game session for " + player + ".";
         }
+        failureDetector.unregisterClient(player);
         return "Game ended for " + player + ".\nThe solution was:\n" + session.revealedPuzzle;
     }
 
@@ -585,4 +611,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
         return multiplayerManager.runGame(player, roomId, wordServer);
     }
+
+    @Override
+    public void heartbeat(String client) throws RemoteException {
+        failureDetector.updateClientActivity(client);
+        System.out.println("Received heartbeat from " + client);
+    }
+
+	
+    
 }

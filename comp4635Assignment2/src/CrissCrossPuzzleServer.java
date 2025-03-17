@@ -43,4 +43,9 @@ public interface CrissCrossPuzzleServer extends Remote {
 	public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException;
 
 	public String showActiveGameRooms() throws RemoteException;
+	
+	// Heartbeat method for failure detection
+    public void heartbeat(String client) throws RemoteException;
+
+	
 }
