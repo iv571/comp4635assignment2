@@ -62,10 +62,9 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         int xFactor = Integer.parseInt(config.getProperty("xFactor", "3"));
         long checkIntervalMillis = Long.parseLong(config.getProperty("checkIntervalMillis", "1000"));
         
-        // Create the failure detector with the loaded (or default) values.
-        failureDetector = new FailureDetector(toleranceMillis, xFactor, checkIntervalMillis);
+        // Pass "this" as the callback reference to the FailureDetector.
+        failureDetector = new FailureDetector(toleranceMillis, xFactor, checkIntervalMillis, this);
     }
-
     /**
      * Initial connection to the WordRepositoryServer.
      */
@@ -616,6 +615,11 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     public void heartbeat(String client) throws RemoteException {
         failureDetector.updateClientActivity(client);
         System.out.println("Received heartbeat from " + client);
+    }
+    
+    public void releaseGameState(String clientName) {
+        removeSession(clientName);
+        System.out.println("Released game state for " + clientName);
     }
 
 	

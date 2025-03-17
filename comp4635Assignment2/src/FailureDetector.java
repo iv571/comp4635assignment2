@@ -8,12 +8,13 @@ public class FailureDetector {
     public enum ClientState { ALIVE, SUSPECTED, FAILED }
 
     public static class FailureRecord {
-        private long lastInteraction;
+        // Use a monotonic clock (nanoseconds)
+        private long lastInteraction; 
         private ClientState state;
         private int suspectCount;
 
-        public FailureRecord(long time) {
-            this.lastInteraction = time;
+        public FailureRecord(long timeNano) {
+            this.lastInteraction = timeNano;
             this.state = ClientState.ALIVE;
             this.suspectCount = 0;
         }
@@ -22,8 +23,8 @@ public class FailureDetector {
             return lastInteraction;
         }
 
-        public synchronized void updateInteraction(long time) {
-            this.lastInteraction = time;
+        public synchronized void updateInteraction(long timeNano) {
+            this.lastInteraction = timeNano;
             this.state = ClientState.ALIVE;
             this.suspectCount = 0;
         }
@@ -46,32 +47,37 @@ public class FailureDetector {
     }
 
     private final ConcurrentHashMap<String, FailureRecord> records = new ConcurrentHashMap<>();
-    private final long toleranceMillis;       // Tolerance for inactivity
+    private final long toleranceFreq;       // Tolerance in ms
     private final int xFactor;                // Number of suspect cycles before marking FAILED
-    private final long checkIntervalMillis;   // Frequency of checks
+    private final long checkIntervalFreq;   // Check frequency 
     private volatile boolean running = true;
+    
+    // Callback reference to the server
+    private final CrissCrossImpl server;
 
-    public FailureDetector(long toleranceMillis, int xFactor, long checkIntervalMillis) {
-        this.toleranceMillis = toleranceMillis;
+    // Modified constructor with callback
+    public FailureDetector(long toleranceFreq, int xFactor, long checkIntervalFreq, CrissCrossImpl server) {
+        this.toleranceFreq = toleranceFreq;
         this.xFactor = xFactor;
-        this.checkIntervalMillis = checkIntervalMillis;
-        if (checkIntervalMillis > toleranceMillis) {
-            throw new IllegalArgumentException("checkIntervalMillis must be <= toleranceMillis");
+        this.checkIntervalFreq = checkIntervalFreq;
+        this.server = server;
+        if (checkIntervalFreq > toleranceFreq) {
+            throw new IllegalArgumentException("checkIntervalFreq must be <= toleranceFreq");
         }
         new Thread(new FailureDetectorTask()).start();
     }
 
-    // Update client activity
+    // Update client activity using the monotonic clock.
     public void updateClientActivity(String clientName) {
         FailureRecord record = records.get(clientName);
         if (record != null) {
-            record.updateInteraction(System.currentTimeMillis());
+            record.updateInteraction(System.nanoTime());
         }
     }
 
-    // Register a new client
+    // Register a new client with the current nanoTime.
     public void registerClient(String clientName) {
-        records.put(clientName, new FailureRecord(System.currentTimeMillis()));
+        records.put(clientName, new FailureRecord(System.nanoTime()));
         System.out.println("Registered client " + clientName + " for failure detection.");
     }
 
@@ -92,26 +98,30 @@ public class FailureDetector {
         running = false;
     }
 
-    // Background task to monitor clients
+    // Background task to monitor clients using monotonic time.
     private class FailureDetectorTask implements Runnable {
         @Override
         public void run() {
+            // Convert tolerance and check interval from ms to ns.
+            final long toleranceNanos = toleranceFreq * 1_000_000L;
+            final long checkIntervalNanos = checkIntervalFreq * 1_000_000L;
+
             while (running) {
                 try {
-                    TimeUnit.MILLISECONDS.sleep(checkIntervalMillis);
+                    // Sleep for the specified check interval (still in ms)
+                    TimeUnit.MILLISECONDS.sleep(checkIntervalFreq);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
-                long currentTime = System.currentTimeMillis();
+                long currentTimeNano = System.nanoTime();
                 for (Iterator<Map.Entry<String, FailureRecord>> it = records.entrySet().iterator(); it.hasNext();) {
                     Map.Entry<String, FailureRecord> entry = it.next();
                     String clientName = entry.getKey();
                     FailureRecord record = entry.getValue();
 
                     synchronized (record) {
-                        // Changed to >= for immediate detection at toleranceMillis
-                        if (currentTime - record.getLastInteraction() >= toleranceMillis) {
+                        if (currentTimeNano - record.getLastInteraction() >= toleranceNanos) {
                             if (record.getState() == ClientState.ALIVE) {
                                 record.setState(ClientState.SUSPECTED);
                                 record.incrementSuspectCount();
@@ -123,6 +133,8 @@ public class FailureDetector {
                                 if (record.getSuspectCount() >= xFactor) {
                                     record.setState(ClientState.FAILED);
                                     System.out.println("Client " + clientName + " has FAILED.");
+                                    // Call the server's callback to release game state
+                                    server.releaseGameState(clientName);
                                     it.remove(); // Remove failed client
                                 }
                             }

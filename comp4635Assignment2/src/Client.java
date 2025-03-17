@@ -51,7 +51,9 @@ public class Client {
         ready, // ready for the game room
         leave, // leave the game room
         rungame, // run the game
-        quit // quit
+        quit, // quit
+        pause, //pause heartbeat
+        resume, //resume heartbeat
     }
 
     public Client(String serverUrl, String clientName) {
@@ -347,6 +349,11 @@ public class Client {
                     break;
                 case restart:
                     String restartResponse = puzzleServer.restartGame(clientName);
+                 // Start the heartbeat thread only when the game starts.
+                    if (heartbeatThread == null || !heartbeatThread.isAlive()) {
+                        heartbeatThread = new Thread(new HeartbeatTask());
+                        heartbeatThread.start();
+                    }
                     System.out.println(restartResponse);
                     break;
                 case add:
@@ -573,8 +580,28 @@ public class Client {
                         System.out.println("Error retrieving scoreboard: " + e.getMessage());
                     }
                     break;
+                case pause:
+                    if (heartbeatThread != null) {
+                        heartbeatThread.interrupt();
+                        heartbeatThread = null;
+                    }
+                    break;
+                case resume:
+                    // Immediately send a heartbeat upon resuming
+                    puzzleServer.heartbeat(clientname);
+                    if (heartbeatThread == null || !heartbeatThread.isAlive()) {
+                        heartbeatThread = new Thread(new HeartbeatTask());
+                        heartbeatThread.start();
+                        System.out.println("Heartbeat resumed.");
+                    }
+                    break;
                 case quit:
                     System.out.println("Quitting...");
+                 // Stop the heartbeat thread if it's running
+                    if (heartbeatThread != null) {
+                        heartbeatThread.interrupt();
+                        heartbeatThread = null;
+                    }
                     System.exit(0);
                     break;
                 default:
