@@ -150,6 +150,9 @@ public class GameRoom {
             try {
                 ClientCallback callback = playerCallbacks.get(currentPlayerName);
                 if (callback != null) {
+                    if (!callback.isInputBufferEmpty()) {
+                        callback.flushInputBuffer();
+                    }
                     String playerInput = callback.requestPlayerInput(currentPlayerName);
 
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {

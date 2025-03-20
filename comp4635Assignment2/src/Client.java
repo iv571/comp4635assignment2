@@ -192,6 +192,7 @@ public class Client {
                     execute(parse(userInput), clientname);
                     // System.out.println("INNER\n");
                 }
+                printHelp();
             } catch (RejectedException re) {
                 System.out.println(re);
             } catch (IOException e) {
