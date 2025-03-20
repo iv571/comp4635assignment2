@@ -77,6 +77,10 @@ public class Multiplayer {
             return "Game with ID " + gameId + " not found.";
         }
 
+        if (!game.playerExists(hostName)) {
+            return "Host has to join the game room before start the game room";
+        }
+
         // Start the game by calling startGame method of GameRoom
         String result = game.startGame(hostName);
 

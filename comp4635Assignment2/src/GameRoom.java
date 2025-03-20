@@ -326,7 +326,7 @@ public class GameRoom {
         return response.toString();
     }
 
-    private boolean playerExists(String playerName) {
+    public boolean playerExists(String playerName) {
         for (Player p : players) {
             if (p.getName().equals(playerName)) {
                 return true;
