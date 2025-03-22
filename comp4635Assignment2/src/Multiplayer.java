@@ -17,7 +17,7 @@ public class Multiplayer {
         this.scheduler = Executors.newScheduledThreadPool(5);
     }
 
-    private synchronized int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
+    private int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
         if (hostGameMap.containsKey(host)) {
             throw new RemoteException("Host " + host + " has already created a game and cannot create another.");
         }
@@ -33,7 +33,7 @@ public class Multiplayer {
         return gameId;
     }
 
-    public synchronized String startMultiGame(String host, int numPlayers, int gameLevel) {
+    public String startMultiGame(String host, int numPlayers, int gameLevel) {
         try {
             int newGameId = createGame(host, numPlayers, gameLevel);
             return "Multi-player game created! Game ID = " + newGameId
@@ -44,7 +44,7 @@ public class Multiplayer {
     }
 
     // joinMultiGame(player_name, ...., .....)
-    public synchronized String joinMultiGame(String player, int gameId, ClientCallback callback)
+    public String joinMultiGame(String player, int gameId, ClientCallback callback)
             throws RemoteException {
         GameRoom game = gameRooms.get(gameId);
         if (game == null) {
@@ -65,7 +65,7 @@ public class Multiplayer {
         return "\n";
     }
 
-    public synchronized String startGameRoom(String hostName, int gameId) throws RemoteException {
+    public String startGameRoom(String hostName, int gameId) throws RemoteException {
         // Check if the host has a valid game ID
         if (!hostGameMap.containsKey(hostName)) {
             return "Host does not have a valid game room to start.";
@@ -77,13 +77,17 @@ public class Multiplayer {
             return "Game with ID " + gameId + " not found.";
         }
 
+        if (!game.playerExists(hostName)) {
+            return "Host has to join the game room before start the game room";
+        }
+
         // Start the game by calling startGame method of GameRoom
         String result = game.startGame(hostName);
 
         return result;
     }
 
-    public synchronized String setActivePlayer(String player, int roomId) throws RemoteException {
+    public String setActivePlayer(String player, int roomId) throws RemoteException {
         GameRoom game = gameRooms.get(roomId);
 
         if (game == null) {
@@ -101,7 +105,23 @@ public class Multiplayer {
         if (game == null) {
             return "Game with ID " + roomId + " not found.";
         }
+
+        if (!hostGameMap.containsKey(player)) {
+            return "Host does not have a valid game room to run.";
+        } else if (hostGameMap.containsKey(player) && roomId != hostGameMap.get(player)) {
+            return "You must be the host of this game room to run.";
+        }
+
         String result = game.runGame(player, wordServer);
+
+        System.out.println("Game ends: " + player + " " + roomId);
+
+        // Delete the game room after the game finishes
+        // if (gameRooms.containsKey(roomId)) {
+        // gameRooms.remove(roomId);
+        // }
+        hostGameMap.remove(player);
+
         return result;
     }
 
@@ -115,7 +135,7 @@ public class Multiplayer {
         return result;
     }
 
-    public synchronized boolean isActiveRoom(int gameId) throws RemoteException {
+    public boolean isActiveRoom(int gameId) throws RemoteException {
         try {
             GameRoom game = gameRooms.get(gameId);
 
@@ -128,6 +148,13 @@ public class Multiplayer {
             throw new RemoteException("An error occurred while checking if the game room is active: " + e.getMessage(),
                     e);
         }
+    }
+
+    public boolean isValidRoomID(int roomID) {
+        if (gameRooms.containsKey(roomID)) {
+            return true;
+        }
+        return false;
     }
 
     public synchronized boolean isGameRun(int gameId) throws RemoteException {
@@ -150,14 +177,14 @@ public class Multiplayer {
         return gameId;
     }
 
-    public synchronized String showActiveGameRooms() {
+    public String showActiveGameRooms() {
         StringBuilder info = new StringBuilder();
         info.append("=====      Active Game Rooms     =====\n");
 
         boolean hasActiveGames = false;
 
         for (GameRoom game : gameRooms.values()) {
-            if (!game.isStarted()) {
+            if (!game.isStarted() && !game.isGameFinished()) {
                 hasActiveGames = true;
                 info.append("Game ID: ").append(game.getGameId()).append("\n")
                         .append("Host: ").append(game.getHost()).append("\n")

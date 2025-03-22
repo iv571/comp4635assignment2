@@ -43,4 +43,6 @@ public interface CrissCrossPuzzleServer extends Remote {
 	public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException;
 
 	public String showActiveGameRooms() throws RemoteException;
+
+	public boolean isValidRoomID(int roomID) throws RemoteException;
 }
