@@ -161,7 +161,7 @@ public class Multiplayer {
         boolean hasActiveGames = false;
 
         for (GameRoom game : gameRooms.values()) {
-            if (!game.isStarted()) {
+            if (!game.isStarted() && !game.isGameFinished()) {
                 hasActiveGames = true;
                 info.append("Game ID: ").append(game.getGameId()).append("\n")
                         .append("Host: ").append(game.getHost()).append("\n")

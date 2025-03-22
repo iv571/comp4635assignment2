@@ -12,6 +12,7 @@ public class GameRoom {
     private int gameLevel;
     private boolean isStarted;
     private boolean isRun;
+    private boolean isFinished;
     private String host;
     private List<Player> players;
     private Map<String, ClientCallback> playerCallbacks;
@@ -25,6 +26,7 @@ public class GameRoom {
         this.gameLevel = gameLevel;
         this.isStarted = false;
         this.isRun = false;
+        this.isFinished = false;
         this.host = host;
         this.players = new ArrayList<>();
         this.playerCallbacks = new HashMap<>();
@@ -100,6 +102,7 @@ public class GameRoom {
     private void endGame() {
         isStarted = false;
         isRun = false;
+        isFinished = true;
         broadcastMessage("Game is terminated\n");
     }
 
@@ -341,6 +344,10 @@ public class GameRoom {
 
     public boolean isStarted() {
         return this.isStarted;
+    }
+
+    public boolean isGameFinished() {
+        return this.isFinished;
     }
 
     public synchronized boolean isGameRun() {
