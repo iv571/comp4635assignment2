@@ -105,7 +105,20 @@ public class Multiplayer {
         if (game == null) {
             return "Game with ID " + roomId + " not found.";
         }
+
+        if (!hostGameMap.containsKey(player)) {
+            return "Host does not have a valid game room to run.";
+        } else if (hostGameMap.containsKey(player) && roomId != hostGameMap.get(player)) {
+            return "You must be the host of this game room to run.";
+        }
+
         String result = game.runGame(player, wordServer);
+
+        System.out.println("Game ends: " + player + " " + roomId);
+
+        // Delete the game room after the game finishes
+        hostGameMap.remove(player);
+
         return result;
     }
 

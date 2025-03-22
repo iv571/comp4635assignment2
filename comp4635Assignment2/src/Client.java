@@ -190,13 +190,6 @@ public class Client {
                     // System.out.println("NORMAL MODE\nExecutreCommand\n");
                     String userInput = consoleIn.readLine();
                     execute(parse(userInput), clientname);
-                    // System.out.println("INNER\n");
-                    if (activeGameID != -1) {
-                        System.out.println(
-                                "active room id: " + activeGameID + " isGameRun: "
-                                        + puzzleServer.isGameRun(activeGameID)
-                                        + " isGameStarted: " + puzzleServer.isActiveRoom(activeGameID));
-                    }
                 }
             } catch (RejectedException re) {
                 System.out.println(re);
