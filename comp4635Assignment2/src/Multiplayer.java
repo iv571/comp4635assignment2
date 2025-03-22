@@ -44,7 +44,7 @@ public class Multiplayer {
     }
 
     // joinMultiGame(player_name, ...., .....)
-    public synchronized String joinMultiGame(String player, int gameId, ClientCallback callback)
+    public String joinMultiGame(String player, int gameId, ClientCallback callback)
             throws RemoteException {
         GameRoom game = gameRooms.get(gameId);
         if (game == null) {
