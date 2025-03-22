@@ -339,7 +339,7 @@ public class GameRoom {
         return players.removeIf(player -> player.getName().equals(playerName));
     }
 
-    public synchronized boolean isStarted() {
+    public boolean isStarted() {
         return this.isStarted;
     }
 

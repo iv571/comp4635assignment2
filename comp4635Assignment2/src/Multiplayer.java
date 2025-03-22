@@ -119,7 +119,7 @@ public class Multiplayer {
         return result;
     }
 
-    public synchronized boolean isActiveRoom(int gameId) throws RemoteException {
+    public boolean isActiveRoom(int gameId) throws RemoteException {
         try {
             GameRoom game = gameRooms.get(gameId);
 
@@ -154,7 +154,7 @@ public class Multiplayer {
         return gameId;
     }
 
-    public synchronized String showActiveGameRooms() {
+    public String showActiveGameRooms() {
         StringBuilder info = new StringBuilder();
         info.append("=====      Active Game Rooms     =====\n");
 
