@@ -87,7 +87,7 @@ public class Multiplayer {
         return result;
     }
 
-    public synchronized String setActivePlayer(String player, int roomId) throws RemoteException {
+    public String setActivePlayer(String player, int roomId) throws RemoteException {
         GameRoom game = gameRooms.get(roomId);
 
         if (game == null) {

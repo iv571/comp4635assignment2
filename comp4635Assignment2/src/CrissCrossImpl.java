@@ -577,7 +577,7 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     @Override
-    public boolean isGameRun(int gameId) throws RemoteException {
+    public synchronized boolean isGameRun(int gameId) throws RemoteException {
         return multiplayerManager.isGameRun(gameId);
     }
 

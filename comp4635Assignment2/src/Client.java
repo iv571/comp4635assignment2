@@ -191,6 +191,12 @@ public class Client {
                     String userInput = consoleIn.readLine();
                     execute(parse(userInput), clientname);
                     // System.out.println("INNER\n");
+                    if (activeGameID != -1) {
+                        System.out.println(
+                                "active room id: " + activeGameID + " isGameRun: "
+                                        + puzzleServer.isGameRun(activeGameID)
+                                        + " isGameStarted: " + puzzleServer.isActiveRoom(activeGameID));
+                    }
                 }
             } catch (RejectedException re) {
                 System.out.println(re);
@@ -466,8 +472,9 @@ public class Client {
                     if (readyMPResponse.equals("You have been marked as ready.\n")) {
                         activeGameID = roomId;
                         // System.out.println("Hello " + activeGameID);
-                        System.out
-                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                        // System.out
+                        // .println("Active room: " + roomId + " isStarted: " +
+                        // puzzleServer.isActiveRoom(roomId));
                     }
                     break;
 

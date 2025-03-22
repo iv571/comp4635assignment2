@@ -291,7 +291,7 @@ public class GameRoom {
         }
     }
 
-    public synchronized String setActivePlayer(String player) {
+    public String setActivePlayer(String player) {
         StringBuilder response = new StringBuilder();
         boolean playerExists = playerExists(player);
         if (!playerExists) {
@@ -350,7 +350,7 @@ public class GameRoom {
         return this.isFinished;
     }
 
-    public boolean isGameRun() {
+    public synchronized boolean isGameRun() {
         return this.isRun;
     }
 
