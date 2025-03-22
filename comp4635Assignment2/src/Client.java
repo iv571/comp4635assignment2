@@ -420,8 +420,9 @@ public class Client {
                     System.out.println(gameMPResponse);
                     if (gameMPResponse.equals("You have successfully started the game room.\n")) {
                         activeGameID = roomId;
-                        System.out
-                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                        // System.out
+                        // .println("Active room: " + roomId + " isStarted: " +
+                        // puzzleServer.isActiveRoom(roomId));
                     }
                     break;
                 case rungame:

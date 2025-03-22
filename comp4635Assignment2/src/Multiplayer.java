@@ -17,7 +17,7 @@ public class Multiplayer {
         this.scheduler = Executors.newScheduledThreadPool(5);
     }
 
-    private synchronized int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
+    private int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
         if (hostGameMap.containsKey(host)) {
             throw new RemoteException("Host " + host + " has already created a game and cannot create another.");
         }
@@ -33,7 +33,7 @@ public class Multiplayer {
         return gameId;
     }
 
-    public synchronized String startMultiGame(String host, int numPlayers, int gameLevel) {
+    public String startMultiGame(String host, int numPlayers, int gameLevel) {
         try {
             int newGameId = createGame(host, numPlayers, gameLevel);
             return "Multi-player game created! Game ID = " + newGameId

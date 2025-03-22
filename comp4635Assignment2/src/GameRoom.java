@@ -350,7 +350,7 @@ public class GameRoom {
         return this.isFinished;
     }
 
-    public synchronized boolean isGameRun() {
+    public boolean isGameRun() {
         return this.isRun;
     }
 
