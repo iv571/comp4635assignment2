@@ -183,6 +183,9 @@ public class Client {
             System.out.print(clientname + "@" + serverUrl + ">");
             System.out.println("OUTER\n");
             try {
+                if (!puzzleServer.isValidRoomID(activeGameID)) {
+                    activeGameID = -1;
+                }
                 if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
                         && puzzleServer.isActiveRoom(activeGameID)) {
                     System.out.println("WAITING FOR THE HOST TO START THE GAME - HANG ON.....\n");

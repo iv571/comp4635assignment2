@@ -585,4 +585,9 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
         return multiplayerManager.runGame(player, roomId, wordServer);
     }
+
+    @Override
+    public boolean isValidRoomID(int roomID) throws RemoteException {
+        return multiplayerManager.isValidRoomID(roomID);
+    }
 }

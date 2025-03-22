@@ -117,6 +117,9 @@ public class Multiplayer {
         System.out.println("Game ends: " + player + " " + roomId);
 
         // Delete the game room after the game finishes
+        // if (gameRooms.containsKey(roomId)) {
+        // gameRooms.remove(roomId);
+        // }
         hostGameMap.remove(player);
 
         return result;
@@ -145,6 +148,13 @@ public class Multiplayer {
             throw new RemoteException("An error occurred while checking if the game room is active: " + e.getMessage(),
                     e);
         }
+    }
+
+    public boolean isValidRoomID(int roomID) {
+        if (gameRooms.containsKey(roomID)) {
+            return true;
+        }
+        return false;
     }
 
     public synchronized boolean isGameRun(int gameId) throws RemoteException {
