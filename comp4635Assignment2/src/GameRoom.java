@@ -43,7 +43,7 @@ public class GameRoom {
         return false;
     }
 
-    public synchronized String startGame(String hostName) {
+    public String startGame(String hostName) {
         StringBuilder response = new StringBuilder();
 
         if (hostName == null || host == null) {

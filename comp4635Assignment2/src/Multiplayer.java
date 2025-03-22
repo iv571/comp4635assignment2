@@ -65,7 +65,7 @@ public class Multiplayer {
         return "\n";
     }
 
-    public synchronized String startGameRoom(String hostName, int gameId) throws RemoteException {
+    public String startGameRoom(String hostName, int gameId) throws RemoteException {
         // Check if the host has a valid game ID
         if (!hostGameMap.containsKey(hostName)) {
             return "Host does not have a valid game room to start.";
