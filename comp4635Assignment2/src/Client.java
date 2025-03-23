@@ -9,7 +9,15 @@ import java.util.regex.*;
 
 public class Client {
     private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
+    
+ // Heartbeat interval in milliseconds (set to 5 seconds)
+    private static final long HEARTBEAT_INTERVAL = 5000;
+    // Example toleranceMillis (should match server's configuration)
+    private static final long TOLERANCE_MILLIS = 10000; // For reference, adjust as needed
 
+   
+    
+   
     CrissCrossPuzzleServer puzzleServer;
     UserAccountServer accountServer;
     WordRepositoryServer wordServer;
@@ -18,6 +26,9 @@ public class Client {
     String clientname;
     String username = " ";
     int activeGameID = -1;
+    
+    // Thread to handle heartbeat messages
+    private Thread heartbeatThread = null;
 
     // Define the commands the client supports.
     enum CommandName {
@@ -40,7 +51,9 @@ public class Client {
         ready, // ready for the game room
         leave, // leave the game room
         rungame, // run the game
-        quit // quit
+        quit, // quit
+        pause, //pause heartbeat
+        resume, //resume heartbeat
     }
 
     public Client(String serverUrl, String clientName) {
@@ -61,6 +74,27 @@ public class Client {
             System.exit(0);
         }
         System.out.println("Connected to puzzle server: " + serverUrl);
+    }
+    
+    /**
+     * Inner class that sends heartbeats at regular intervals.
+     */
+    private class HeartbeatTask implements Runnable {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    Thread.sleep(HEARTBEAT_INTERVAL);
+                    // Send a heartbeat to the server.
+                    puzzleServer.heartbeat(clientname);
+                } catch (InterruptedException ie) {
+                    System.out.println("Heartbeat thread interrupted.");
+                    break;
+                } catch (RemoteException re) {
+                    System.err.println("Heartbeat error: " + re.getMessage());
+                }
+            }
+        }
     }
 
     /**
@@ -175,6 +209,8 @@ public class Client {
                 e.printStackTrace();
             }
         }
+        
+       
 
         // Display the help menu right after successful login.
         printHelp();
@@ -285,6 +321,12 @@ public class Client {
                     int numberOfWords = Integer.parseInt(command.param1);
                     int failedAttemptFactor = Integer.parseInt(command.param2);
                     String startResponse = puzzleServer.startGame(username, numberOfWords, failedAttemptFactor);
+                 
+                    // Start the heartbeat thread only when the game starts.
+                    if (heartbeatThread == null || !heartbeatThread.isAlive()) {
+                        heartbeatThread = new Thread(new HeartbeatTask());
+                        heartbeatThread.start();
+                    }
                     System.out.println(startResponse);
                     break;
                 case letter:
@@ -300,9 +342,20 @@ public class Client {
                 case end:
                     String endResponse = puzzleServer.endGame(clientName);
                     System.out.println(endResponse);
+
+                    // Stop the heartbeat thread when the game ends.
+                    if (heartbeatThread != null) {
+                        heartbeatThread.interrupt();
+                        heartbeatThread = null;
+                    }
                     break;
                 case restart:
                     String restartResponse = puzzleServer.restartGame(clientName);
+                 // Start the heartbeat thread only when the game starts.
+                    if (heartbeatThread == null || !heartbeatThread.isAlive()) {
+                        heartbeatThread = new Thread(new HeartbeatTask());
+                        heartbeatThread.start();
+                    }
                     System.out.println(restartResponse);
                     break;
                 case add:
@@ -531,8 +584,28 @@ public class Client {
                         System.out.println("Error retrieving scoreboard: " + e.getMessage());
                     }
                     break;
+                case pause:
+                    if (heartbeatThread != null) {
+                        heartbeatThread.interrupt();
+                        heartbeatThread = null;
+                    }
+                    break;
+                case resume:
+                    // Immediately send a heartbeat upon resuming
+                    puzzleServer.heartbeat(clientname);
+                    if (heartbeatThread == null || !heartbeatThread.isAlive()) {
+                        heartbeatThread = new Thread(new HeartbeatTask());
+                        heartbeatThread.start();
+                        System.out.println("Heartbeat resumed.");
+                    }
+                    break;
                 case quit:
                     System.out.println("Quitting...");
+                 // Stop the heartbeat thread if it's running
+                    if (heartbeatThread != null) {
+                        heartbeatThread.interrupt();
+                        heartbeatThread = null;
+                    }
                     System.exit(0);
                     break;
                 default:
