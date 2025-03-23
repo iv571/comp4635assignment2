@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /FailureDetector.class
 /FailureDetector$ClientState.class
 /FailureDetector$FailureDetectorTask.class
@@ -6,3 +7,8 @@
 /FailureDetector$ClientFailureHandler.class
 /FailureDetector$ClientFailureListener.class
 /failureconfig.properties
+=======
+/Client$CommandName.class
+/Client.class
+/Client$Command.class
+>>>>>>> master

@@ -48,4 +48,6 @@ public interface CrissCrossPuzzleServer extends Remote {
     public void heartbeat(String client) throws RemoteException;
 
 	
+
+	public boolean isValidRoomID(int roomID) throws RemoteException;
 }

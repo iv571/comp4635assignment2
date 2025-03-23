@@ -12,6 +12,7 @@ public class GameRoom {
     private int gameLevel;
     private boolean isStarted;
     private boolean isRun;
+    private boolean isFinished;
     private String host;
     private List<Player> players;
     private Map<String, ClientCallback> playerCallbacks;
@@ -25,6 +26,7 @@ public class GameRoom {
         this.gameLevel = gameLevel;
         this.isStarted = false;
         this.isRun = false;
+        this.isFinished = false;
         this.host = host;
         this.players = new ArrayList<>();
         this.playerCallbacks = new HashMap<>();
@@ -41,7 +43,7 @@ public class GameRoom {
         return false;
     }
 
-    public synchronized String startGame(String hostName) {
+    public String startGame(String hostName) {
         StringBuilder response = new StringBuilder();
 
         if (hostName == null || host == null) {
@@ -100,6 +102,7 @@ public class GameRoom {
     private void endGame() {
         isStarted = false;
         isRun = false;
+        isFinished = true;
         broadcastMessage("Game is terminated\n");
     }
 
@@ -150,6 +153,9 @@ public class GameRoom {
             try {
                 ClientCallback callback = playerCallbacks.get(currentPlayerName);
                 if (callback != null) {
+                    if (!callback.isInputBufferEmpty()) {
+                        callback.flushInputBuffer();
+                    }
                     String playerInput = callback.requestPlayerInput(currentPlayerName);
 
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
@@ -285,7 +291,7 @@ public class GameRoom {
         }
     }
 
-    public synchronized String setActivePlayer(String player) {
+    public String setActivePlayer(String player) {
         StringBuilder response = new StringBuilder();
         boolean playerExists = playerExists(player);
         if (!playerExists) {
@@ -323,7 +329,7 @@ public class GameRoom {
         return response.toString();
     }
 
-    private boolean playerExists(String playerName) {
+    public boolean playerExists(String playerName) {
         for (Player p : players) {
             if (p.getName().equals(playerName)) {
                 return true;
@@ -336,8 +342,12 @@ public class GameRoom {
         return players.removeIf(player -> player.getName().equals(playerName));
     }
 
-    public synchronized boolean isStarted() {
+    public boolean isStarted() {
         return this.isStarted;
+    }
+
+    public boolean isGameFinished() {
+        return this.isFinished;
     }
 
     public synchronized boolean isGameRun() {

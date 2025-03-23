@@ -219,6 +219,9 @@ public class Client {
             System.out.print(clientname + "@" + serverUrl + ">");
             System.out.println("OUTER\n");
             try {
+                if (!puzzleServer.isValidRoomID(activeGameID)) {
+                    activeGameID = -1;
+                }
                 if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
                         && puzzleServer.isActiveRoom(activeGameID)) {
                     System.out.println("WAITING FOR THE HOST TO START THE GAME - HANG ON.....\n");
@@ -226,7 +229,6 @@ public class Client {
                     // System.out.println("NORMAL MODE\nExecutreCommand\n");
                     String userInput = consoleIn.readLine();
                     execute(parse(userInput), clientname);
-                    // System.out.println("INNER\n");
                 }
             } catch (RejectedException re) {
                 System.out.println(re);
@@ -473,8 +475,9 @@ public class Client {
                     System.out.println(gameMPResponse);
                     if (gameMPResponse.equals("You have successfully started the game room.\n")) {
                         activeGameID = roomId;
-                        System.out
-                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                        // System.out
+                        // .println("Active room: " + roomId + " isStarted: " +
+                        // puzzleServer.isActiveRoom(roomId));
                     }
                     break;
                 case rungame:
@@ -518,8 +521,9 @@ public class Client {
                     if (readyMPResponse.equals("You have been marked as ready.\n")) {
                         activeGameID = roomId;
                         // System.out.println("Hello " + activeGameID);
-                        System.out
-                                .println("Active room: " + roomId + " isStarted: " + puzzleServer.isActiveRoom(roomId));
+                        // System.out
+                        // .println("Active room: " + roomId + " isStarted: " +
+                        // puzzleServer.isActiveRoom(roomId));
                     }
                     break;
 
