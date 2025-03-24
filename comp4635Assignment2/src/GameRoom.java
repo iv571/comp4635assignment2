@@ -112,9 +112,11 @@ public class GameRoom {
         
         FailureDetector detector = failureDetector.get(player_name);
         
+        ClientCallback callback = playerCallbacks.get(player_name);
+
         if (detector == null){
-            detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(null);
-            failureDetector.put("player_name", detector);
+            detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(callback);
+            failureDetector.put(player_name, detector);
 
         }
         FailureDetector.ClientState currentState = detector.getClientState(player_name);
