@@ -17,6 +17,7 @@ public class GameRoom {
     private List<Player> players;
     private Map<String, ClientCallback> playerCallbacks;
     private Map<String, Boolean> activePlayers; // player name
+    private Map<String, FailureDetector> failureDetector;
     private int currentTurnIndex = 0;
     private Mutiplayer_Puzzle puzzleServer;
 
@@ -31,6 +32,8 @@ public class GameRoom {
         this.players = new ArrayList<>();
         this.playerCallbacks = new HashMap<>();
         this.activePlayers = new HashMap<>();
+        this.failureDetector = new HashMap<>();
+
     }
 
     public boolean addPlayer(String playerName, ClientCallback callback) {
@@ -105,7 +108,33 @@ public class GameRoom {
         isFinished = true;
         broadcastMessage("Game is terminated\n");
     }
+    private int check_curr_player_state (String player_name){
+        
+        FailureDetector detector = failureDetector.get(player_name);
+        
+        if (detector == null){
+            detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(null);
+            failureDetector.put("player_name", detector);
 
+        }
+        FailureDetector.ClientState currentState = detector.getClientState(player_name);
+
+        switch (currentState) {
+            case ALIVE:
+                return 1;
+
+            case SUSPECTED:
+                return 0;
+
+            case FAILED:
+                return -1;
+
+            default:
+                System.out.println("Unknown client state.");
+                return -99;
+        }
+        
+    }
     private String startTurns() {
         boolean singlePlayerCase = false;
         Player winner = null;
@@ -146,6 +175,8 @@ public class GameRoom {
 
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
+
+            int active = check_curr_player_state (currentPlayerName);
 
             broadcastMessage(puzzleServer.render_player_view_puzzle());
             broadcastMessage(currentPlayerName + ", it's your turn! Please type your word.");

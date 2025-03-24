@@ -76,6 +76,22 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         // Pass "this" as the callback reference to the FailureDetector.
         failureDetector = new FailureDetector(toleranceMillis, xFactor, checkIntervalMillis, this);
     }
+
+    public static FailureDetector loadConfigAndInitializeFailureDetector(ClientCallback callback) {
+        Properties config = new Properties();
+        try (FileInputStream fis = new FileInputStream("failureconfig.properties")) {
+            config.load(fis);
+        } catch (IOException e) {
+            System.err.println("Could not load configuration file, using defaults.");
+        }
+        
+        long toleranceMillis = Long.parseLong(config.getProperty("toleranceMillis", "6000"));
+        int xFactor = Integer.parseInt(config.getProperty("xFactor", "3"));
+        long checkIntervalMillis = Long.parseLong(config.getProperty("checkIntervalMillis", "1000"));
+        
+        // Pass "this" as the callback reference to the FailureDetector.
+        return new FailureDetector(toleranceMillis, xFactor, checkIntervalMillis, callback);
+    }
     /**
      * Initial connection to the WordRepositoryServer.
      */

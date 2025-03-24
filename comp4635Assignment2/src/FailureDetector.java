@@ -53,14 +53,30 @@ public class FailureDetector {
     private volatile boolean running = true;
     
     // Callback reference to the server
-    private final CrissCrossImpl server;
+    private final CrissCrossImpl crissCrossImplserver;
+    private final ClientCallback clientCallbackserver;
+    
 
     // Modified constructor with callback
     public FailureDetector(long toleranceFreq, int xFactor, long checkIntervalFreq, CrissCrossImpl server) {
         this.toleranceFreq = toleranceFreq;
         this.xFactor = xFactor;
         this.checkIntervalFreq = checkIntervalFreq;
-        this.server = server;
+        this.crissCrossImplserver = server;
+        this.clientCallbackserver = null;
+
+        if (checkIntervalFreq > toleranceFreq) {
+            throw new IllegalArgumentException("checkIntervalFreq must be <= toleranceFreq");
+        }
+        new Thread(new FailureDetectorTask()).start();
+    }
+    public FailureDetector(long toleranceFreq, int xFactor, long checkIntervalFreq, ClientCallback server) {
+        this.toleranceFreq = toleranceFreq;
+        this.xFactor = xFactor;
+        this.checkIntervalFreq = checkIntervalFreq;
+        this.crissCrossImplserver = null;
+        this.clientCallbackserver = server;
+    
         if (checkIntervalFreq > toleranceFreq) {
             throw new IllegalArgumentException("checkIntervalFreq must be <= toleranceFreq");
         }
@@ -105,16 +121,18 @@ public class FailureDetector {
             // Convert tolerance and check interval from ms to ns.
             final long toleranceNanos = toleranceFreq * 1_000_000L;
             final long checkIntervalNanos = checkIntervalFreq * 1_000_000L;
-
+            boolean init = true;
             while (running) {
                 try {
-                    // Sleep for the specified check interval (still in ms)
-                    TimeUnit.MILLISECONDS.sleep(checkIntervalFreq);
+                    if (!init)
+                        // Sleep for the specified check interval (still in ms)
+                        TimeUnit.MILLISECONDS.sleep(checkIntervalFreq);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
                 long currentTimeNano = System.nanoTime();
+                init = false;
                 for (Iterator<Map.Entry<String, FailureRecord>> it = records.entrySet().iterator(); it.hasNext();) {
                     Map.Entry<String, FailureRecord> entry = it.next();
                     String clientName = entry.getKey();
@@ -134,7 +152,7 @@ public class FailureDetector {
                                     record.setState(ClientState.FAILED);
                                     System.out.println("Client " + clientName + " has FAILED.");
                                     // Call the server's callback to release game state
-                                    server.releaseGameState(clientName);
+                                    crissCrossImplserver.releaseGameState(clientName);
                                     it.remove(); // Remove failed client
                                 }
                             }
