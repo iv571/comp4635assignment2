@@ -108,13 +108,14 @@ public class GameRoom {
         isFinished = true;
         broadcastMessage("Game is terminated\n");
     }
-    private int check_curr_player_state (String player_name){
-        
+
+    private int check_curr_player_state(String player_name) {
+
         FailureDetector detector = failureDetector.get(player_name);
-        
+
         ClientCallback callback = playerCallbacks.get(player_name);
 
-        if (detector == null){
+        if (detector == null) {
             detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(callback);
             failureDetector.put(player_name, detector);
 
@@ -135,8 +136,9 @@ public class GameRoom {
                 System.out.println("Unknown client state.");
                 return -99;
         }
-        
+
     }
+
     private String startTurns() {
         boolean singlePlayerCase = false;
         Player winner = null;
@@ -178,7 +180,24 @@ public class GameRoom {
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
 
-            int active = check_curr_player_state (currentPlayerName);
+            // int active = check_curr_player_state (currentPlayerName);
+            /*
+             * if (active == -1) {
+             * // If the player is inactive (active == -1), remove them from the game
+             * broadcastMessage(currentPlayerName + " is inactive and has been removed.");
+             * removePlayer(currentPlayerName);
+             * // Move to the next player
+             * currentTurnIndex = (currentTurnIndex + 1) % players.size();
+             * continue; // Skip the rest of the loop and give turn to the next player
+             * } else if (active == 0) {
+             * // If the player is inactive but not removed (active == 0), skip their turn
+             * broadcastMessage(currentPlayerName +
+             * "'s turn is skipped due to inactivity.");
+             * // Move to the next player
+             * currentTurnIndex = (currentTurnIndex + 1) % players.size();
+             * continue; // Skip the rest of the loop and give turn to the next player
+             * }
+             */
 
             broadcastMessage(puzzleServer.render_player_view_puzzle());
             broadcastMessage(currentPlayerName + ", it's your turn! Please type your word.");
