@@ -7,6 +7,16 @@ import java.rmi.RemoteException;
 import java.util.StringTokenizer;
 import java.util.regex.*;
 
+/**
+ * Client class for the CrissCross Puzzle game.
+ * <p>
+ * This client connects to various remote servers using Java RMI: a puzzle server,
+ * a user account server, and a word repository server. It supports both single-player
+ * and multi-player modes. Commands are provided via a console interface.
+ * </p>
+ *
+ * Usage: java Client rmi://localhost:1099/GameServer YourClientName
+ */
 public class Client {
 	private static final String USAGE = "java Client rmi://localhost:1099/GameServer YourClientName";
 
@@ -30,7 +40,9 @@ public class Client {
 	// Thread to handle heartbeat messages
 	private Thread heartbeatThread = null;
 
-	// Define the commands the client supports.
+	 /**
+     * Enum defining the set of commands supported by the client.
+     */
 	enum CommandName {
 		start, // start <numberOfWords> <failedAttemptFactor>
 		letter, // letter <character>
@@ -56,6 +68,12 @@ public class Client {
 		resume, // resume heartbeat
 	}
 
+	 /**
+     * Constructor that initializes the client by looking up remote server objects.
+     *
+     * @param serverUrl  URL of the puzzle server.
+     * @param clientName The name of the client.
+     */
 	public Client(String serverUrl, String clientName) {
 		this.serverUrl = serverUrl;
 		this.clientname = clientName;
@@ -76,9 +94,10 @@ public class Client {
 		System.out.println("Connected to puzzle server: " + serverUrl);
 	}
 
-	/**
-	 * Inner class that sends heartbeats at regular intervals.
-	 */
+	  /**
+     * Inner class that implements a Runnable to send periodic heartbeat messages to the server.
+     * This helps in detecting and maintaining connectivity.
+     */
 	private class HeartbeatTask implements Runnable {
 		@Override
 		public void run() {
@@ -108,7 +127,14 @@ public class Client {
 		System.out.println("  login <username> <password>");
 		System.out.println();
 	}
-
+	
+	 /**
+     * Main client loop.
+     * <p>
+     * This method handles authentication first and then continuously reads commands
+     * from the console to execute game operations.
+     * </p>
+     */
 	public void run() {
 		BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
 		boolean authenticated = false;
@@ -231,6 +257,7 @@ public class Client {
 		// Display the help menu right after successful login.
 		printHelp();
 
+		// Main command loop for handling game commands.
 		while (true) {
 			System.out.print(clientname + "@" + serverUrl + ">");
 			System.out.println("OUTER\n");
@@ -254,6 +281,12 @@ public class Client {
 		}
 	}
 
+	 /**
+     * Parses the user input into a Command object.
+     *
+     * @param userInput the raw input from the user
+     * @return a Command object representing the parsed command, or null if input is invalid.
+     */
 	private Command parse(String userInput) {
 		if (userInput == null || userInput.trim().isEmpty()) {
 			return null;
@@ -325,6 +358,14 @@ public class Client {
 		return command;
 	}
 
+	 /**
+     * Executes a given command by calling the corresponding remote method.
+     *
+     * @param command    the parsed Command object.
+     * @param clientName the client's name.
+     * @throws RemoteException   if a remote communication error occurs.
+     * @throws RejectedException if the command is rejected.
+     */
 	void execute(Command command, String clientName) throws RemoteException, RejectedException {
 		if (command == null) {
 			return;
@@ -743,6 +784,9 @@ public class Client {
 
 	}
 
+	/**
+     * Inner class representing a parsed command.
+     */
 	private class Command {
 		private String userName;
 		private float amount;
@@ -762,6 +806,13 @@ public class Client {
 			return commandName;
 		}
 
+	    /**
+         * Constructs a new Command object.
+         *
+         * @param commandName the type of command
+         * @param userName    the username associated with the command
+         * @param amount      an amount (if applicable)
+         */
 		private Command(Client.CommandName commandName, String userName, float amount) {
 			this.commandName = commandName;
 			this.userName = userName;
@@ -810,7 +861,9 @@ public class Client {
 		System.out.println(border);
 	}
 
-	// Helper method to re-lookup the WordRepositoryServer.
+	 /**
+     * Helper method to reconnect to the UserAccountServer.
+     */
 	private void reconnectWordServer() {
 		try {
 			wordServer = (WordRepositoryServer) Naming.lookup("rmi://localhost:1099/WordRepositoryServer");
@@ -830,6 +883,9 @@ public class Client {
 		}
 	}
 
+    /**
+     * Helper method to reconnect to the PuzzleServer.
+     */
 	private void reconnectPuzzleServer() {
 		try {
 			puzzleServer = (CrissCrossPuzzleServer) Naming.lookup(serverUrl);
@@ -840,6 +896,11 @@ public class Client {
 		}
 	}
 
+	 /**
+     * The entry point of the client application.
+     *
+     * @param args Command line arguments; expects exactly 2 arguments.
+     */
 	public static void main(String[] args) {
 		if (args.length != 2) {
 			System.out.println(USAGE);
