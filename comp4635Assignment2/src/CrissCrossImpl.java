@@ -32,20 +32,11 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     
     // FailureDetector instance will be created with configurable values.
     private FailureDetector failureDetector;
-    
- // [At-most-once] Deduplication maps using composite keys (player:methodName)
-    private Map<String, Integer> lastSeenSeq = new ConcurrentHashMap<>();
-    private Map<String, Object> lastResponse = new ConcurrentHashMap<>();
 
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
         loadConfigAndInitializeFailureDetector();
         connectToWordRepository();
-    }
-    
- // Helper method to build composite keys for deduplication
-    private String getCacheKey(String player, String methodName) {
-        return player + ":" + methodName;
     }
 
     // Inner class to represent a game session per player.
@@ -114,23 +105,16 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     // ===============================
 
     @Override
-    public boolean addWord(String username, String word, int seq) throws RemoteException {
-        String key = getCacheKey(username, "addWord");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: addWord('" + word + "') from " + username + " with seq " + seq + " - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean 
-                   ? (Boolean) lastResponse.get(key) : false;
-        }
+    public boolean addWord(String word) throws RemoteException {
         if (wordServer == null) {
+            // Attempt an initial or lazy connect
             connectToWordRepository();
             if (wordServer == null) {
                 throw new RemoteException("WordRepositoryServer is not available.");
             }
         }
-        boolean result;
         try {
-            result = wordServer.createWord(word);
+            return wordServer.createWord(word);
         } catch (RemoteException e) {
             if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
                 System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
@@ -138,35 +122,25 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 if (wordServer == null) {
                     throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
                 }
-                result = wordServer.createWord(word);
+                // Retry once after reconnecting
+                return wordServer.createWord(word);
             } else {
-                throw e;
+                throw e; // Some other remote error
             }
         }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed addWord('" + word + "') for " + username + " [seq=" + seq + "], result=" + result);
-        return result;
     }
-    
+
     @Override
-    public boolean removeWord(String username, String word, int seq) throws RemoteException {
-        String key = getCacheKey(username, "removeWord");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: removeWord('" + word + "') from " + username + " with seq " + seq + " - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean 
-                   ? (Boolean) lastResponse.get(key) : false;
-        }
+    public boolean removeWord(String word) throws RemoteException {
         if (wordServer == null) {
+            // Attempt an initial or lazy connect
             connectToWordRepository();
             if (wordServer == null) {
                 throw new RemoteException("WordRepositoryServer is not available.");
             }
         }
-        boolean result;
         try {
-            result = wordServer.removeWord(word);
+            return wordServer.removeWord(word);
         } catch (RemoteException e) {
             if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
                 System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
@@ -174,35 +148,25 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 if (wordServer == null) {
                     throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
                 }
-                result = wordServer.removeWord(word);
+                // Retry once after reconnecting
+                return wordServer.removeWord(word);
             } else {
-                throw e;
+                throw e; // Some other remote error
             }
         }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed removeWord('" + word + "') for " + username + " [seq=" + seq + "], result=" + result);
-        return result;
     }
-    
+
     @Override
-    public boolean checkWord(String username, String word, int seq) throws RemoteException {
-        String key = getCacheKey(username, "checkWord");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: checkWord('" + word + "') from " + username + " with seq " + seq + " - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean 
-                   ? (Boolean) lastResponse.get(key) : false;
-        }
+    public boolean checkWord(String word) throws RemoteException {
         if (wordServer == null) {
+            // Attempt an initial or lazy connect
             connectToWordRepository();
             if (wordServer == null) {
                 throw new RemoteException("WordRepositoryServer is not available.");
             }
         }
-        boolean result;
         try {
-            result = wordServer.checkWord(word);
+            return wordServer.checkWord(word);
         } catch (RemoteException e) {
             if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
                 System.out.println("Lost connection to WordRepositoryServer, attempting to reconnect...");
@@ -210,17 +174,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 if (wordServer == null) {
                     throw new RemoteException("WordRepositoryServer is unavailable after reconnection attempt.");
                 }
-                result = wordServer.checkWord(word);
+                // Retry once after reconnecting
+                return wordServer.checkWord(word);
             } else {
-                throw e;
+                throw e; // Some other remote error
             }
         }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed checkWord('" + word + "') for " + username + " [seq=" + seq + "], result=" + result);
-        return result;
     }
-    
 
     private String getRandomWordFromFile(int minLength) {
         List<String> words = new ArrayList<>();
@@ -388,72 +348,67 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     }
 
     @Override
-    public String startGame(String player, int level, int failedAttemptFactor, int seq) throws RemoteException {
-        // Register and update the client activity with the failure detector.
-        failureDetector.registerClient(player);
+    public String startGame(String player, int level, int failedAttemptFactor) throws RemoteException {
+    	failureDetector.registerClient(player);
         failureDetector.updateClientActivity(player);
-
-        // Deduplication check using sequence numbers.
-        String key = getCacheKey(player, "startGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: startGame from " + player + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate request ignored.";
-        }
-
+        // Clamp the level between 1 and 10.
         int effectiveLevel = Math.max(1, Math.min(level, 10));
+        // effectiveLevel now controls the number of horizontal words generated.
+
         GameSession session = new GameSession();
+
+        // Get a candidate word from the file that is at least 'effectiveLevel' long.
         String candidate;
         do {
             candidate = getRandomWordFromFile(effectiveLevel);
         } while (candidate.length() < effectiveLevel);
+        // Use the entire candidate as the vertical stem.
         session.verticalStem = candidate.toLowerCase();
+        // The vertical stem length is the full length of the candidate.
         int verticalStemLength = candidate.length();
         int numCols = verticalStemLength;
         int colForStem = numCols / 2;
+        // Create an array for horizontal words of size 'effectiveLevel'.
+        // (This means we generate horizontal words only for rows 1 ..
+        // effectiveLevel-1.)
         session.horizontalWords = new String[effectiveLevel];
         Arrays.fill(session.horizontalWords, "");
         for (int i = 1; i < effectiveLevel && i < verticalStemLength; i++) {
             String hWord;
             do {
-                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength, colForStem);
+                hWord = getConstrainedRandomWord(session.verticalStem.charAt(i), effectiveLevel, verticalStemLength,
+                        colForStem);
             } while (hWord.isEmpty());
             session.horizontalWords[i] = hWord.toLowerCase();
         }
+
+        // Construct the puzzle grid using the entire vertical stem (all its
+        // characters).
         session.puzzle = constructPuzzle(session.verticalStem, session.horizontalWords);
         int numLetters = countPuzzleLetters(session.puzzle);
         session.failAttempts = failedAttemptFactor * numLetters;
+
         session.formattedPuzzle = formatPuzzle(session.puzzle);
         session.revealedPuzzle = revealPuzzle(session.puzzle);
+
+        // Only the update to the sessions map is synchronized.
         putSession(player, session);
+
         System.out.println("Completed puzzle on server:");
         System.out.println(session.revealedPuzzle);
-        String response = "Game started for " + player + "!\n" + session.formattedPuzzle +
-                          "\nAttempts allowed: " + session.failAttempts;
-        // Store the sequence and response for deduplication.
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, response);
-        System.out.println("Processed startGame for " + player + " [seq=" + seq + "]");
-        return response;
+
+        return "Game started for " + player + "!\n" +
+                session.formattedPuzzle +
+                "\nAttempts allowed: " + session.failAttempts;
     }
 
-   
     @Override
-    public String guessLetter(String player, char letter, int seq) throws RemoteException {
-        String key = getCacheKey(player, "guessLetter");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: guessLetter('" + letter + "') from " + player + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate request ignored.";
-        }
+    public String guessLetter(String player, char letter) throws RemoteException {
         GameSession session = getSession(player);
         if (session == null) {
-            String result = "No active game session for " + player + ".";
-            lastSeenSeq.put(key, seq);
-            lastResponse.put(key, result);
-            System.out.println("Processed guessLetter for " + player + " [seq=" + seq + "] - no active session.");
-            return result;
+            return "No active game session for " + player + ".";
         }
+
         char lowerLetter = Character.toLowerCase(letter);
         boolean found = false;
         char[] formattedChars = session.formattedPuzzle.toCharArray();
@@ -475,16 +430,13 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                     e.printStackTrace();
                 }
                 removeSession(player);
-                String result = "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
-                lastSeenSeq.put(key, seq);
-                lastResponse.put(key, result);
-                System.out.println("Processed guessLetter for " + player + " [seq=" + seq + "] - game over.");
-                return result;
+                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
             }
         }
         session.formattedPuzzle = new String(formattedChars);
         if (!session.formattedPuzzle.contains("_")) {
             removeSession(player);
+            // After a win, update the score by +1:
             try {
                 Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                 UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
@@ -492,45 +444,34 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            String result = "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
-            lastSeenSeq.put(key, seq);
-            lastResponse.put(key, result);
-            System.out.println("Processed guessLetter for " + player + " [seq=" + seq + "] - puzzle solved.");
-            return result;
+            return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
         }
-        String result = "Current puzzle state:\n" + session.formattedPuzzle +
-                        "\nAttempts remaining: " + session.failAttempts;
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed guessLetter for " + player + " [seq=" + seq + "] - letter " + (found ? "found" : "not found") + ".");
-        return result;
+        return "Current puzzle state:\n" + session.formattedPuzzle +
+                "\nAttempts remaining: " + session.failAttempts;
     }
-    
+
     @Override
-    public String guessWord(String player, String word, int seq) throws RemoteException {
-        String key = getCacheKey(player, "guessWord");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: guessWord(\"" + word + "\") from " + player + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate request ignored.";
-        }
+    public String guessWord(String player, String word) throws RemoteException {
         GameSession session = getSession(player);
         if (session == null) {
-            String result = "No active game session for " + player + ".";
-            lastSeenSeq.put(key, seq);
-            lastResponse.put(key, result);
-            System.out.println("Processed guessWord for " + player + " [seq=" + seq + "] - no active session.");
-            return result;
+            return "No active game session for " + player + ".";
         }
         String lowerWord = word.toLowerCase();
         boolean wordFound = false;
+
+        // Get dynamic grid dimensions.
         int gridWidth = session.puzzle[0].length;
         int colForStem = gridWidth / 2;
+
+        // We'll use the delimiter "\n" for splitting and joining rows.
         String[] rows = session.formattedPuzzle.split("\\+\\n");
+
         if (lowerWord.equals(session.verticalStem.toLowerCase())) {
+            // The guess is for the vertical stem.
             for (int i = 0; i < rows.length && i < session.puzzle.length; i++) {
                 char[] rowChars = rows[i].toCharArray();
                 if (colForStem < rowChars.length) {
+                    // Reveal the vertical letter from the full puzzle.
                     rowChars[colForStem] = session.puzzle[i][colForStem];
                 }
                 rows[i] = new String(rowChars);
@@ -539,17 +480,25 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
             session.formattedPuzzle = session.formattedPuzzle.replace("++", "+");
             wordFound = true;
         } else {
+            // Look for a matching horizontal word.
             for (int i = 0; i < session.horizontalWords.length; i++) {
                 String hWord = session.horizontalWords[i];
-                if (hWord.isEmpty()) continue;
+                if (hWord.isEmpty())
+                    continue;
                 if (hWord.equalsIgnoreCase(lowerWord)) {
+                    // Determine the constraint letter (from the vertical stem) for this row.
                     char constraint = session.verticalStem.charAt(i);
                     int constraintIndex = hWord.toLowerCase().indexOf(Character.toLowerCase(constraint));
-                    if (constraintIndex == -1) continue;
+                    if (constraintIndex == -1)
+                        continue;
+                    // Compute the starting column for the horizontal word.
                     int startCol = colForStem - constraintIndex;
                     startCol = Math.max(0, Math.min(startCol, gridWidth - hWord.length()));
-                    if (i >= rows.length) continue;
+                    // Make sure we have the correct row from the formatted puzzle.
+                    if (i >= rows.length)
+                        continue;
                     char[] rowChars = rows[i].toCharArray();
+                    // Reveal only the segment corresponding to the horizontal word.
                     for (int j = 0; j < hWord.length() && (startCol + j) < gridWidth; j++) {
                         rowChars[startCol + j] = session.puzzle[i][startCol + j];
                     }
@@ -561,9 +510,12 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 }
             }
         }
+
         if (wordFound) {
+            // If there are no underscores left, the puzzle is complete.
             if (!session.formattedPuzzle.contains("_")) {
                 removeSession(player);
+                // After a win, update the score by +1.
                 try {
                     Registry registry = LocateRegistry.getRegistry("localhost", 1099);
                     UserAccountServer accountServer = (UserAccountServer) registry.lookup("UserAccountServer");
@@ -571,18 +523,10 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                String result = "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
-                lastSeenSeq.put(key, seq);
-                lastResponse.put(key, result);
-                System.out.println("Processed guessWord for " + player + " [seq=" + seq + "] - puzzle solved.");
-                return result;
+                return "Congratulations " + player + ", you completed the puzzle!\n" + session.formattedPuzzle;
             }
-            String result = "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
-                            "\nAttempts remaining: " + session.failAttempts;
-            lastSeenSeq.put(key, seq);
-            lastResponse.put(key, result);
-            System.out.println("Processed guessWord for " + player + " [seq=" + seq + "] - word found.");
-            return result;
+            return "Word correct!\nCurrent puzzle state:\n" + session.formattedPuzzle +
+                    "\nAttempts remaining: " + session.failAttempts;
         } else {
             session.failAttempts--;
             if (session.failAttempts <= 0) {
@@ -594,218 +538,77 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
                     e.printStackTrace();
                 }
                 removeSession(player);
-                String result = "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
-                lastSeenSeq.put(key, seq);
-                lastResponse.put(key, result);
-                System.out.println("Processed guessWord for " + player + " [seq=" + seq + "] - game over.");
-                return result;
+                return "Game over! No attempts remaining. The solution was:\n" + session.revealedPuzzle;
             }
-            String result = "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: " 
-                            + session.failAttempts;
-            lastSeenSeq.put(key, seq);
-            lastResponse.put(key, result);
-            System.out.println("Processed guessWord for " + player + " [seq=" + seq + "] - word not found.");
-            return result;
+            return "Sorry, the word \"" + word + "\" is not in the puzzle.\nAttempts remaining: "
+                    + session.failAttempts;
         }
     }
 
     @Override
-    public String endGame(String player, int seq) throws RemoteException {
+    public String endGame(String player) throws RemoteException {
     	failureDetector.updateClientActivity(player);
-        String key = getCacheKey(player, "endGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: endGame from " + player + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate request ignored.";
-        }
         GameSession session = sessions.remove(player);
-        String result;
         if (session == null) {
-            result = "No active game session for " + player + ".";
-        } else {
-            result = "Game ended for " + player + ".\nThe solution was:\n" + session.revealedPuzzle;
+            return "No active game session for " + player + ".";
         }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed endGame for " + player + " [seq=" + seq + "]");
-        
         failureDetector.unregisterClient(player);
-        return result;
+        return "Game ended for " + player + ".\nThe solution was:\n" + session.revealedPuzzle;
     }
 
     @Override
-    public synchronized String restartGame(String player, int seq) throws RemoteException {
-        String key = getCacheKey(player, "restartGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: restartGame from " + player + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate request ignored.";
-        }
+    public synchronized String restartGame(String player) throws RemoteException {
         sessions.remove(player);
-        String result = startGame(player, 5, 3, seq);
-        System.out.println("Processed restartGame for " + player + " [seq=" + seq + "]");
-        return result;
+        // Restart with default parameters (adjust as needed)
+        return startGame(player, 5, 3);
     }
-    
+
     @Override
-    public String startMultiGame(String username, int numPlayers, int level, int seq) throws RemoteException, RejectedException {
-        String key = getCacheKey(username, "startMultiGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: startMultiGame from " + username + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "";
-        }
-        String result = multiplayerManager.startMultiGame(username, numPlayers, level);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed startMultiGame for " + username + " [seq=" + seq + "]");
-        return result;
+    public String startMultiGame(String username, int numPlayers, int level)
+            throws RemoteException, RejectedException {
+        return multiplayerManager.startMultiGame(username, numPlayers, level);
     }
-    
+
     @Override
-    public String joinMultiGame(String player, int gameId, ClientCallback callback, int seq) throws RemoteException, RejectedException {
-        String key = getCacheKey(player, "joinMultiGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: joinMultiGame(player=" + player + ", gameId=" + gameId + ") [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate join request ignored.";
-        }
-        String result = multiplayerManager.joinMultiGame(player, gameId, callback);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed joinMultiGame for " + player + " (game " + gameId + ") [seq=" + seq + "]");
-        return result;
+    public String joinMultiGame(String player, int gameId, ClientCallback callback)
+            throws RemoteException, RejectedException {
+        // Delegate to the multiplayerManager instance.
+        return multiplayerManager.joinMultiGame(player, gameId, callback);
     }
-    
+
     @Override
-    public String showActiveGameRooms(String username, int seq) throws RemoteException {
-        String key = getCacheKey(username, "showActiveGameRooms");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: showActiveGameRooms from " + username + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "";
-        }
-        String result = multiplayerManager.showActiveGameRooms();
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed showActiveGameRooms for " + username + " [seq=" + seq + "]");
-        return result;
+    public String showActiveGameRooms() throws RemoteException {
+        return multiplayerManager.showActiveGameRooms();
     }
-    
+
     @Override
-    public String startGameRoom(String hostName, int gameId, int seq) throws RemoteException {
-        String key = getCacheKey(hostName, "startGameRoom");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: startGameRoom(host=" + hostName + ", gameId=" + gameId + ") [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "Duplicate startGameRoom request ignored.";
-        }
-        String result = multiplayerManager.startGameRoom(hostName, gameId);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed startGameRoom for " + hostName + " (game " + gameId + ") [seq=" + seq + "]");
-        return result;
+    public String startGameRoom(String hostName, int gameId) throws RemoteException {
+        return multiplayerManager.startGameRoom(hostName, gameId);
     }
-    
+
     @Override
-    public String setActivePlayer(String player, int gameId, int seq) throws RemoteException {
-        String key = getCacheKey(player, "setActivePlayer");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: setActivePlayer(" + player + ", gameId=" + gameId + ") [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "";
-        }
-        String result = multiplayerManager.setActivePlayer(player, gameId);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed setActivePlayer for " + player + " (game " + gameId + ") [seq=" + seq + "]");
-        return result;
+    public String setActivePlayer(String player, int gameId) throws RemoteException {
+        return multiplayerManager.setActivePlayer(player, gameId);
     }
-    
+
     @Override
-    public String leaveRoom(String player, int gameId, int seq) throws RemoteException {
-        String key = getCacheKey(player, "leaveRoom");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: leaveRoom(" + player + ", gameId=" + gameId + ") [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "";
-        }
-        String result = multiplayerManager.leaveRoom(player, gameId);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed leaveRoom for " + player + " (game " + gameId + ") [seq=" + seq + "]");
-        return result;
+    public String leaveRoom(String player, int gameId) throws RemoteException {
+        return multiplayerManager.leaveRoom(player, gameId);
     }
-    
+
     @Override
-    public boolean isActiveRoom(String username, int gameId, int seq) throws RemoteException {
-        String key = getCacheKey(username, "isActiveRoom");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: isActiveRoom(gameId=" + gameId + ") from " + username + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean ? (Boolean) lastResponse.get(key) : false;
-        }
-        boolean result;
-        try {
-            result = multiplayerManager.isActiveRoom(gameId);
-        } catch (Exception e) {
-            throw new RemoteException("An error occurred while checking if the game room is active: " + e.getMessage(), e);
-        }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed isActiveRoom(gameId=" + gameId + ") for " + username + " [seq=" + seq + "]");
-        return result;
+    public boolean isActiveRoom(int gameId) throws RemoteException {
+        return multiplayerManager.isActiveRoom(gameId);
     }
-    
+
     @Override
-    public synchronized boolean isGameRun(String username, int gameId, int seq) throws RemoteException {
-        String key = getCacheKey(username, "isGameRun");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: isGameRun(gameId=" + gameId + ") from " + username + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean ? (Boolean) lastResponse.get(key) : false;
-        }
-        boolean result;
-        try {
-            result = multiplayerManager.isGameRun(gameId);
-        } catch (Exception e) {
-            throw new RemoteException("Error while checking if game is running: " + e.getMessage(), e);
-        }
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed isGameRun(gameId=" + gameId + ") for " + username + " [seq=" + seq + "]");
-        return result;
+    public synchronized boolean isGameRun(int gameId) throws RemoteException {
+        return multiplayerManager.isGameRun(gameId);
     }
-    
+
     @Override
-    public String runGame(String player, int roomId, WordRepositoryServer wordServer, int seq) throws RemoteException {
-        String key = getCacheKey(player, "runGame");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: runGame(host=" + player + ", roomId=" + roomId + ") [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) ? (String) lastResponse.get(key) : "";
-        }
-        String result = multiplayerManager.runGame(player, roomId, wordServer);
-        System.out.println("Game ends: host=" + player + ", roomId=" + roomId);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed runGame for " + player + " (room " + roomId + ") [seq=" + seq + "]");
-        return result;
-    }
-    
-    @Override
-    public boolean isValidRoomID(String username, int roomID, int seq) throws RemoteException {
-        String key = getCacheKey(username, "isValidRoomID");
-        Integer last = lastSeenSeq.get(key);
-        if (last != null && seq <= last) {
-            System.out.println("Duplicate request: isValidRoomID(" + roomID + ") from " + username + " [seq=" + seq + "] - **IGNORED**");
-            return lastResponse.containsKey(key) && lastResponse.get(key) instanceof Boolean ? (Boolean) lastResponse.get(key) : false;
-        }
-        boolean result = multiplayerManager.isValidRoomID(roomID);
-        lastSeenSeq.put(key, seq);
-        lastResponse.put(key, result);
-        System.out.println("Processed isValidRoomID(" + roomID + ") for " + username + " [seq=" + seq + "]");
-        return result;
+    public String runGame(String player, int roomId, WordRepositoryServer wordServer) throws RemoteException {
+        return multiplayerManager.runGame(player, roomId, wordServer);
     }
 
     @Override

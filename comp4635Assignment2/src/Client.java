@@ -15,8 +15,8 @@ public class Client {
     // Example toleranceMillis (should match server's configuration)
     private static final long TOLERANCE_MILLIS = 10000; // For reference, adjust as needed
 
- // [At-most-once] Sequence number for deduplication of requests
-    private int sequenceNumber = 0;
+   
+    
    
     CrissCrossPuzzleServer puzzleServer;
     UserAccountServer accountServer;
@@ -111,8 +111,8 @@ public class Client {
 
     public void run() {
         BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
+
         boolean authenticated = false;
-        // Authentication loop
         while (!authenticated) {
             displayAuthenticationMenu();
             System.out.print("Auth> ");
@@ -144,7 +144,8 @@ public class Client {
                         }
                     } catch (RemoteException re) {
                         if (re.getMessage().contains("Connection refused")) {
-                            System.out.println("Connection to the user account server was lost. Attempting to reconnect...");
+                            System.out.println(
+                                    "Connection to the user account server was lost. Attempting to reconnect...");
                             reconnectUserAccountServer();
                             try {
                                 boolean created = accountServer.createAccount(username, password);
@@ -155,7 +156,8 @@ public class Client {
                                 }
                             } catch (RemoteException re2) {
                                 if (re2.getMessage().contains("Connection refused")) {
-                                    System.out.println("The user account server is currently unavailable. Please try again later.");
+                                    System.out.println(
+                                            "The user account server is currently unavailable. Please try again later.");
                                 } else {
                                     System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
                                 }
@@ -169,45 +171,29 @@ public class Client {
                         boolean loggedIn = accountServer.loginAccount(username, password);
                         if (loggedIn) {
                             System.out.println("Login successful. Welcome, " + username + "!");
-                            clientname = username; // set the client name after successful login
-                            // [At-most-once] Initialize sequence number as specified by client
-                            System.out.print("Set initial sequence number for requests: ");
-                            String seqInput = consoleIn.readLine();
-                            try {
-                                sequenceNumber = Integer.parseInt(seqInput.trim());
-                            } catch (NumberFormatException nfe) {
-                                sequenceNumber = 1;  // default to 1 if invalid input
-                            }
-                            System.out.println("Initial sequence number set to " + sequenceNumber);
+                            clientname = username; // set the clientname after successful login
                             authenticated = true;
                         } else {
                             System.out.println("Login failed. Please check your credentials and try again.");
                         }
                     } catch (RemoteException re) {
                         if (re.getMessage().contains("Connection refused")) {
-                            System.out.println("Connection to the user account server was lost. Attempting to reconnect...");
+                            System.out.println(
+                                    "Connection to the user account server was lost. Attempting to reconnect...");
                             reconnectUserAccountServer();
                             try {
                                 boolean loggedIn = accountServer.loginAccount(username, password);
                                 if (loggedIn) {
                                     System.out.println("Login successful. Welcome, " + username + "!");
                                     clientname = username;
-                                    // [At-most-once] Initialize sequence number on login after reconnection
-                                    System.out.print("Set initial sequence number for requests: ");
-                                    String seqInput = consoleIn.readLine();
-                                    try {
-                                        sequenceNumber = Integer.parseInt(seqInput.trim());
-                                    } catch (NumberFormatException nfe) {
-                                        sequenceNumber = 1;
-                                    }
-                                    System.out.println("Initial sequence number set to " + sequenceNumber);
                                     authenticated = true;
                                 } else {
                                     System.out.println("Login failed. Please check your credentials and try again.");
                                 }
                             } catch (RemoteException re2) {
                                 if (re2.getMessage().contains("Connection refused")) {
-                                    System.out.println("The user account server is currently unavailable. Please try again later.");
+                                    System.out.println(
+                                            "The user account server is currently unavailable. Please try again later.");
                                 } else {
                                     System.out.println("Remote error after reconnection attempt: " + re2.getMessage());
                                 }
@@ -233,11 +219,11 @@ public class Client {
             System.out.print(clientname + "@" + serverUrl + ">");
             System.out.println("OUTER\n");
             try {
-                if (!puzzleServer.isValidRoomID(username, activeGameID, sequenceNumber)) {
+                if (!puzzleServer.isValidRoomID(activeGameID)) {
                     activeGameID = -1;
                 }
-                if (activeGameID != -1 && puzzleServer.isGameRun(username, activeGameID, sequenceNumber)
-                        && puzzleServer.isActiveRoom(username, activeGameID, sequenceNumber)) {
+                if (activeGameID != -1 && puzzleServer.isGameRun(activeGameID)
+                        && puzzleServer.isActiveRoom(activeGameID)) {
                     System.out.println("WAITING FOR THE HOST TO START THE GAME - HANG ON.....\n");
                 } else {
                     // System.out.println("NORMAL MODE\nExecutreCommand\n");
@@ -334,19 +320,7 @@ public class Client {
                 case start:
                     int numberOfWords = Integer.parseInt(command.param1);
                     int failedAttemptFactor = Integer.parseInt(command.param2);
-                    String startResponse = puzzleServer.startGame(username, numberOfWords, failedAttemptFactor, sequenceNumber);
-                    
-                    
-                 // [At-most-once] Simulate duplicate invocation
-                    if (Math.random() < 0.5) {
-                        
-                        try {
-                            String dupResponse = puzzleServer.startGame(username, numberOfWords, failedAttemptFactor, sequenceNumber);
-                        } catch (RemoteException reDup) {
-                            
-                        }
-                    }
-                    sequenceNumber++;  // increment only after successful call
+                    String startResponse = puzzleServer.startGame(username, numberOfWords, failedAttemptFactor);
                  
                     // Start the heartbeat thread only when the game starts.
                     if (heartbeatThread == null || !heartbeatThread.isAlive()) {
@@ -358,47 +332,17 @@ public class Client {
                 case letter:
                     // For the letter command, use the first character of the parameter.
                     char letter = command.param1.charAt(0);
-                    String letterResponse = puzzleServer.guessLetter(username, letter, sequenceNumber);
+                    String letterResponse = puzzleServer.guessLetter(clientName, letter);
                     System.out.println(letterResponse);
-                    if (Math.random() < 0.5) {
-                        
-                        try {
-                            String dupResponse = puzzleServer.guessLetter(username, letter, sequenceNumber);
-                            
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate request threw exception: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
                 case word:
-                	 String guess = command.param1;
-                    String wordResponse = puzzleServer.guessWord(username, guess, sequenceNumber);
+                    String wordResponse = puzzleServer.guessWord(clientName, command.param1);
                     System.out.println(wordResponse);
-                    if (Math.random() < 0.5) {
-                        
-                        try {
-                            String dupResponse = puzzleServer.guessWord(username, guess, sequenceNumber);
-                           
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate request threw exception: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
                 case end:
-                    String endResponse = puzzleServer.endGame(clientName, sequenceNumber);
+                    String endResponse = puzzleServer.endGame(clientName);
                     System.out.println(endResponse);
-                    if (Math.random() < 0.5) {
-                        System.out.println("[Client] Repeating endGame (seq " + sequenceNumber + ")");
-                        try {
-                            String dupResponse = puzzleServer.endGame(username, sequenceNumber);
-                            System.out.println("[Client] Duplicate response: " + dupResponse);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate request threw exception: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
+
                     // Stop the heartbeat thread when the game ends.
                     if (heartbeatThread != null) {
                         heartbeatThread.interrupt();
@@ -406,41 +350,20 @@ public class Client {
                     }
                     break;
                 case restart:
-                    String restartResponse = puzzleServer.restartGame(clientName, sequenceNumber);
+                    String restartResponse = puzzleServer.restartGame(clientName);
                  // Start the heartbeat thread only when the game starts.
                     if (heartbeatThread == null || !heartbeatThread.isAlive()) {
                         heartbeatThread = new Thread(new HeartbeatTask());
                         heartbeatThread.start();
                     }
                     System.out.println(restartResponse);
-                    if (Math.random() < 0.5) {
-                        System.out.println("[Client] Repeating restartGame (seq " + sequenceNumber + ")");
-                        try {
-                            String dupResponse = puzzleServer.restartGame(username, sequenceNumber);
-                            System.out.println("[Client] Duplicate response: " + dupResponse);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate request threw exception: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
                 case add:
                     try {
-                        boolean addSuccess = puzzleServer.addWord(username, command.param1, sequenceNumber);
+                        boolean addSuccess = puzzleServer.addWord(command.param1);
                         System.out.println(addSuccess
                                 ? "Word added successfully."
                                 : "Failed to add word.");
-                        // Simulate duplicate call on success (the call returned, even if false means it executed)
-                        if (Math.random() < 0.5) {
-                            System.out.println("[Client] Repeating addWord('" + command.param1 + "') (seq " + sequenceNumber + ")");
-                            try {
-                                boolean dupResult = puzzleServer.addWord(username, command.param1, sequenceNumber);
-                                System.out.println("[Client] Duplicate addWord result: " + (dupResult ? "success" : "failure"));
-                            } catch (RemoteException reDup) {
-                                System.out.println("[Client] Duplicate addWord request error: " + reDup.getMessage());
-                            }
-                        }
-                        sequenceNumber++;
                     } catch (RemoteException re) {
                         // Check if the error message indicates the PuzzleServer is offline
                         if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
@@ -449,7 +372,7 @@ public class Client {
                             // After reconnect attempt, retry once
                             if (puzzleServer != null) {
                                 try {
-                                    boolean addSuccess = puzzleServer.addWord(username, command.param1, sequenceNumber);
+                                    boolean addSuccess = puzzleServer.addWord(command.param1);
                                     System.out.println(addSuccess
                                             ? "Word added successfully."
                                             : "Failed to add word.");
@@ -466,27 +389,17 @@ public class Client {
 
                 case remove:
                     try {
-                        boolean removeSuccess = puzzleServer.removeWord(username, command.param1, sequenceNumber);
+                        boolean removeSuccess = puzzleServer.removeWord(command.param1);
                         System.out.println(removeSuccess
                                 ? "Word removed successfully."
                                 : "Failed to remove word.");
-                        if (Math.random() < 0.5) {
-                            System.out.println("[Client] Repeating removeWord('" + command.param1 + "') (seq " + sequenceNumber + ")");
-                            try {
-                                boolean dupResult = puzzleServer.removeWord(username, command.param1, sequenceNumber);
-                                System.out.println("[Client] Duplicate removeWord result: " + (dupResult ? "success" : "failure"));
-                            } catch (RemoteException reDup) {
-                                System.out.println("[Client] Duplicate removeWord request error: " + reDup.getMessage());
-                            }
-                        }
-                        sequenceNumber++;
                     } catch (RemoteException re) {
                         if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
                             System.out.println("Connection to PuzzleServer refused. Attempting to reconnect...");
                             reconnectPuzzleServer();
                             if (puzzleServer != null) {
                                 try {
-                                    boolean removeSuccess = puzzleServer.removeWord(username, command.param1, sequenceNumber);
+                                    boolean removeSuccess = puzzleServer.removeWord(command.param1);
                                     System.out.println(removeSuccess
                                             ? "Word removed successfully."
                                             : "Failed to remove word.");
@@ -502,27 +415,17 @@ public class Client {
 
                 case check:
                     try {
-                        boolean exists = puzzleServer.checkWord(username, command.param1, sequenceNumber);
+                        boolean exists = puzzleServer.checkWord(command.param1);
                         System.out.println(exists
                                 ? "Word exists in the repository."
                                 : "Word does not exist in the repository.");
-                        if (Math.random() < 0.5) {
-                            System.out.println("[Client] Repeating checkWord('" + command.param1 + "') (seq " + sequenceNumber + ")");
-                            try {
-                                boolean dupExists = puzzleServer.checkWord(username, command.param1, sequenceNumber);
-                                System.out.println("[Client] Duplicate checkWord result: " + (dupExists ? "exists" : "does not exist"));
-                            } catch (RemoteException reDup) {
-                                System.out.println("[Client] Duplicate checkWord request error: " + reDup.getMessage());
-                            }
-                        }
-                        sequenceNumber++;
                     } catch (RemoteException re) {
                         if (re.getMessage() != null && re.getMessage().contains("Connection refused")) {
                             System.out.println("Connection to PuzzleServer refused. Attempting to reconnect...");
                             reconnectPuzzleServer();
                             if (puzzleServer != null) {
                                 try {
-                                    boolean exists = puzzleServer.checkWord(username, command.param1, sequenceNumber);
+                                    boolean exists = puzzleServer.checkWord(command.param1);
                                     System.out.println(exists
                                             ? "Word exists in the repository."
                                             : "Word does not exist in the repository.");
@@ -545,18 +448,8 @@ public class Client {
                     int numPlayers = Integer.parseInt(command.param1);
                     int level = Integer.parseInt(command.param2);
                     // Call remote method to start a multi-player game.
-                    String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level, sequenceNumber);
+                    String startMPResponse = puzzleServer.startMultiGame(username, numPlayers, level);
                     System.out.println(startMPResponse);
-                    if (Math.random() < 0.5) {
-                        
-                        try {
-                            String dupResponse = puzzleServer.startMultiGame(username, numPlayers, level, sequenceNumber);
-                            
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate startMultiGame error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
 
                 case joinmultiplayer:
@@ -568,16 +461,8 @@ public class Client {
 
                     int gameId = Integer.parseInt(command.param1);
                     // Call remote method to start a multi-player game.
-                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback, sequenceNumber);
-                    if (Math.random() < 0.5) {
-                        try {
-                            String dupResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback, sequenceNumber);
-                            System.out.println("[Client] Duplicate response: " + dupResponse);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate joinMultiGame error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
+                    String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
+                    System.out.println(joinMPResponse);
                     break;
 
                 case startgameroom:
@@ -586,7 +471,7 @@ public class Client {
                         break;
                     }
                     int roomId = Integer.parseInt(command.param1);
-                    String gameMPResponse = puzzleServer.startGameRoom(username, roomId, sequenceNumber);
+                    String gameMPResponse = puzzleServer.startGameRoom(username, roomId);
                     System.out.println(gameMPResponse);
                     if (gameMPResponse.equals("You have successfully started the game room.\n")) {
                         activeGameID = roomId;
@@ -594,14 +479,6 @@ public class Client {
                         // .println("Active room: " + roomId + " isStarted: " +
                         // puzzleServer.isActiveRoom(roomId));
                     }
-                    if (Math.random() < 0.5) {
-                        try {
-                            String dupResponse = puzzleServer.startGameRoom(username, roomId, sequenceNumber);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate startGameRoom error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
                 case rungame:
                     if (command.param1 == null) {
@@ -609,17 +486,9 @@ public class Client {
                         break;
                     }
                     roomId = Integer.parseInt(command.param1);
-                    if (activeGameID != -1 && roomId == activeGameID && puzzleServer.isActiveRoom(username, activeGameID, sequenceNumber)) {
-                        String runMPResponse = puzzleServer.runGame(username, activeGameID, wordServer, sequenceNumber);
+                    if (activeGameID != -1 && roomId == activeGameID && puzzleServer.isActiveRoom(activeGameID)) {
+                        String runMPResponse = puzzleServer.runGame(username, activeGameID, wordServer);
                         System.out.println(runMPResponse);
-                        if (Math.random() < 0.5) {
-                            try {
-                                String dupResponse = puzzleServer.runGame(username, activeGameID, wordServer, sequenceNumber);
-                            } catch (RemoteException reDup) {
-                                System.out.println("[Client] Duplicate runGame error: " + reDup.getMessage());
-                            }
-                        }
-                        sequenceNumber++;
                         if (!runMPResponse.equals("No winner. Game ended with no active players.\\n")
                                 || !runMPResponse.equals("Only the host can run the game!\\n" + //
                                         "")) {
@@ -647,7 +516,7 @@ public class Client {
                         break;
                     }
                     roomId = Integer.parseInt(command.param1);
-                    String readyMPResponse = puzzleServer.setActivePlayer(username, roomId, sequenceNumber);
+                    String readyMPResponse = puzzleServer.setActivePlayer(username, roomId);
                     System.out.println(readyMPResponse);
                     if (readyMPResponse.equals("You have been marked as ready.\n")) {
                         activeGameID = roomId;
@@ -656,14 +525,6 @@ public class Client {
                         // .println("Active room: " + roomId + " isStarted: " +
                         // puzzleServer.isActiveRoom(roomId));
                     }
-                    if (Math.random() < 0.5) {
-                        try {
-                            String dupResponse = puzzleServer.setActivePlayer(username, roomId, sequenceNumber);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate ready request error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
 
                 case leave:
@@ -672,33 +533,13 @@ public class Client {
                         break;
                     }
                     roomId = Integer.parseInt(command.param1);
-                    String leaveMPResponse = puzzleServer.leaveRoom(username, roomId, sequenceNumber);
+                    String leaveMPResponse = puzzleServer.leaveRoom(username, roomId);
                     System.out.println(leaveMPResponse);
-                    if (Math.random() < 0.5) {
-                        System.out.println("[Client] Repeating leaveRoom (roomId=" + roomId + ", seq " + sequenceNumber + ")");
-                        try {
-                            String dupResponse = puzzleServer.leaveRoom(username, roomId, sequenceNumber);
-                            System.out.println("[Client] Duplicate response: " + dupResponse);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate leave request error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
 
                 case showactivegames:
-                    String activeRooms = puzzleServer.showActiveGameRooms(username, sequenceNumber);
+                    String activeRooms = puzzleServer.showActiveGameRooms();
                     System.out.println(activeRooms);
-                    if (Math.random() < 0.5) {
-                        System.out.println("[Client] Repeating showActiveGameRooms (seq " + sequenceNumber + ")");
-                        try {
-                            String dupRooms = puzzleServer.showActiveGameRooms(username, sequenceNumber);
-                            System.out.println("[Client] Duplicate response:\n" + dupRooms);
-                        } catch (RemoteException reDup) {
-                            System.out.println("[Client] Duplicate showActiveGameRooms error: " + reDup.getMessage());
-                        }
-                    }
-                    sequenceNumber++;
                     break;
 
                 case help:
