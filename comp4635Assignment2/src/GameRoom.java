@@ -35,7 +35,7 @@ public class GameRoom {
         this.failureDetector = new HashMap<>();
 
     }
-
+/* 
     public boolean addPlayer(String playerName, ClientCallback callback) {
         if (players.size() < numPlayers) {
             Player player = new Player(playerName);
@@ -45,7 +45,21 @@ public class GameRoom {
         }
         return false;
     }
-
+        */
+    public boolean addPlayer(String playerName, ClientCallback callback) {
+        if (players.size() < numPlayers) {
+            Player player = new Player(playerName);
+            players.add(player);
+            playerCallbacks.put(playerName, callback);
+            // Initialize FailureDetector for this player
+            FailureDetector detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(callback);
+            detector.registerClient(playerName);
+            failureDetector.put(playerName, detector);
+            detector.updateClientActivity(playerName); // Update activity on joining
+            return true;
+        }
+        return false;
+    }
     public String startGame(String hostName) {
         StringBuilder response = new StringBuilder();
 
@@ -210,32 +224,15 @@ public class GameRoom {
                         callback.flushInputBuffer();
                     }
                     String playerInput = callback.requestPlayerInput(currentPlayerName);
-
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
                         broadcastMessage(currentPlayerName + " did not enter a valid word.");
                     } else {
-                        broadcastMessage(currentPlayerName + " typed: " + playerInput);
-
-                        if (!addedWord.contains(playerInput)) {
-                            if (puzzleServer.is_guessed_word_correct(playerInput)) {
-                                addedWord.add(playerInput);
-                                currentPlayer.increaseScore();
-                                broadcastMessage("Player " + currentPlayerName + "'s guess is correct! Add 1 score");
-                                broadcastMessage(puzzleServer.render_player_view_puzzle());
-                            } else {
-                                currentPlayer.decrementFailAttempt();
-                                broadcastMessage(
-                                        "Player " + currentPlayerName + "'s guess is incorrect! Deduct 1 Fail Attempt");
-                            }
-                        } else {
-                            currentPlayer.decrementFailAttempt();
-                            broadcastMessage(
-                                    "Player " + currentPlayerName + "'s guess is duplicated! Deduct 1 Fail Attempt");
+                        FailureDetector detector = failureDetector.get(currentPlayerName);
+                        if (detector != null) {
+                            detector.updateClientActivity(currentPlayerName); // Update activity on valid input
                         }
-                        broadcastMessage(
-                                "Player " + currentPlayerName + " - Earned Scores: " + currentPlayer.getScore());
-                        broadcastMessage("Player " + currentPlayerName + " - Remaining Fail Attempts: "
-                                + currentPlayer.getCurrentFailAttempt() + "\n");
+                        broadcastMessage(currentPlayerName + " typed: " + playerInput);
+                        // Process the input (e.g., update game state, switch turns, etc.)
                     }
                 } else {
                     broadcastMessage("Player " + currentPlayerName + " is unavailable and has been removed.");
@@ -343,7 +340,7 @@ public class GameRoom {
             broadcastMessage((i + 1) + ". " + players.get(i).getName());
         }
     }
-
+/* 
     public String setActivePlayer(String player) {
         StringBuilder response = new StringBuilder();
         boolean playerExists = playerExists(player);
@@ -361,7 +358,23 @@ public class GameRoom {
         }
         return response.toString();
     }
-
+*/
+public String setActivePlayer(String player) {
+    StringBuilder response = new StringBuilder();
+    if (!activePlayers.containsKey(player)) {
+        isRun = true;
+        activePlayers.put(player, true);
+        FailureDetector detector = failureDetector.get(player);
+        if (detector != null) {
+            detector.updateClientActivity(player); // Update activity when marked ready
+        }
+        broadcastMessage("Player " + player + " is ready\nWaiting for the host to run the game...\n");
+        response.append("You have been marked as ready.\n");
+    } else {
+        response.append("You are already marked as ready.\n");
+    }
+    return response.toString();
+}
     public synchronized String leaveRoom(String player) {
         StringBuilder response = new StringBuilder();
 
