@@ -117,6 +117,7 @@ public class GameRoom {
 
         if (detector == null) {
             detector = CrissCrossImpl.loadConfigAndInitializeFailureDetector(callback);
+            detector.registerClient(player_name);
             failureDetector.put(player_name, detector);
 
         }
@@ -180,7 +181,7 @@ public class GameRoom {
             Player currentPlayer = players.get(currentTurnIndex);
             String currentPlayerName = currentPlayer.getName();
 
-            // int active = check_curr_player_state (currentPlayerName);
+            int active = check_curr_player_state (currentPlayerName);
             /*
              * if (active == -1) {
              * // If the player is inactive (active == -1), remove them from the game

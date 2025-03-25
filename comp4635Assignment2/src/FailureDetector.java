@@ -152,7 +152,8 @@ public class FailureDetector {
                                     record.setState(ClientState.FAILED);
                                     System.out.println("Client " + clientName + " has FAILED.");
                                     // Call the server's callback to release game state
-                                    crissCrossImplserver.releaseGameState(clientName);
+                                    if (crissCrossImplserver != null)
+                                        crissCrossImplserver.releaseGameState(clientName);
                                     it.remove(); // Remove failed client
                                 }
                             }
