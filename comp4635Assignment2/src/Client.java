@@ -586,7 +586,6 @@ public class Client {
 					System.out.println("Usage: startmultiplayer <numberOfPlayers> <level>");
 					break;
 				}
-				
 				int numPlayers = Integer.parseInt(command.param1);
 				int level = Integer.parseInt(command.param2);
 				// Call remote method to start a multi-player game.
@@ -601,10 +600,6 @@ public class Client {
 					break;
 				}
 
-				if (heartbeatThread == null || !heartbeatThread.isAlive()) {
-                    heartbeatThread = new Thread(new HeartbeatTask());
-                    heartbeatThread.start();
-                }
 				int gameId = Integer.parseInt(command.param1);
 				// Call remote method to start a multi-player game.
 				String joinMPResponse = puzzleServer.joinMultiGame(username, gameId, clientCallback);
