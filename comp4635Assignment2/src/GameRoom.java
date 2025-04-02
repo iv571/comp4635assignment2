@@ -49,6 +49,7 @@ public class GameRoom {
             players.add(player);
             playerCallbacks.put(playerName, callback);
 
+            // Notes for Stanley: Set up the clock for each player
             int id = rand.nextInt(100);
             playerID.put(playerName, id);
             playerClocks.put(playerName, new LamportClock(id)); // player's size is the id
@@ -232,6 +233,7 @@ public class GameRoom {
                     } else {
                         // broadcastMessage(currentPlayerName + " typed: " + playerInput);
 
+                        // ==============================================================================
                         // Step 1: Increment Lamport clock
                         LamportClock clock = playerClocks.get(currentPlayerName);
                         int timestamp = clock.tick();
@@ -240,6 +242,7 @@ public class GameRoom {
                         clock.onReceiveMessage(timestamp, playerID.get(currentPlayerName), playerInput);
 
                         broadcastLamportMessage(currentPlayerName, playerInput, timestamp);
+                        // ==============================================================================
 
                         if (!addedWord.contains(playerInput)) {
                             if (puzzleServer.is_guessed_word_correct(playerInput)) {
