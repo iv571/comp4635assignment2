@@ -95,7 +95,7 @@ public class LamportClock implements Serializable {
         // Delivery check after sending (in case message had no predecessors and a single node scenario)
         attemptDeliver();
     }
-
+    
     /**
      * Handles an incoming application message (from some sender). 
      * This method is thread-safe and updates the Lamport clock, queues the message, and broadcasts an ack.
@@ -103,34 +103,32 @@ public class LamportClock implements Serializable {
      * @param senderId  The ID of the sender of the message.
      * @param content   The content of the message.
      */
-    public synchronized void onReceiveMessage(int timestamp, int senderId, String content) {
-        // Update local Lamport clock: take max(local, received) + 1&#8203;:contentReference[oaicite:7]{index=7}
-        updateLamportOnReceive(timestamp);
-        // Create Message object and add to queue
-        Message msg = new Message(timestamp, senderId, content);
-        holdBackQueue.add(msg);
-        // Initialize deliveredClock tracking for this sender if not present
-        deliveredClock.putIfAbsent(senderId, -1);
-        // If any acknowledgments for this message arrived before the message, process them
-        MessageKey key = new MessageKey(senderId, timestamp);
-        if (ackBuffer.containsKey(key)) {
-            Set<Integer> earlyAckSenders = ackBuffer.remove(key);
-            for (int ackSenderId : earlyAckSenders) {
-                msg.addAck(ackSenderId);
+        public synchronized void onReceiveMessage(int timestamp, int senderId, String content) {
+        	 // Update Lamport clock on receiving the ack
+            updateLamportOnReceive(timestamp);
+         // Create Message object and add to queue
+            Message msg = new Message(timestamp, senderId, content);
+            holdBackQueue.add(msg);
+            msg.addAck(this.nodeId); // Add receiver’s own acknowledgment
+         // Initialize deliveredClock tracking for this sender if not present
+            deliveredClock.putIfAbsent(senderId, -1);
+         // If any acknowledgments for this message arrived before the message, process them
+            MessageKey key = new MessageKey(senderId, timestamp);
+            if (ackBuffer.containsKey(key)) {
+                Set<Integer> earlyAckSenders = ackBuffer.remove(key);
+                for (int ackSenderId : earlyAckSenders) {
+                    msg.addAck(ackSenderId);
+                }
             }
+            // Broadcast an acknowledgment to all peers (including the original sender):
+            // Ack contains this node's ID and current Lamport time.
+            int ackTimestamp = lamportClock.get();
+            for (LamportClock peer : peers) {
+            	// Send ack to every other node
+                peer.onReceiveAck(senderId, timestamp, this.nodeId, ackTimestamp);
+            }
+            attemptDeliver();
         }
-        // Broadcast an acknowledgment to all peers (including the original sender):
-        // Ack contains this node's ID and current Lamport time.
-        int ackTimestamp = lamportClock.get();  // current clock after update
-        for (LamportClock peer : peers) {
-            // Send ack to every other node
-            peer.onReceiveAck(senderId, timestamp, this.nodeId, ackTimestamp);
-        }
-        // (Note: The original sender is likely included in peers of a receiver, so sender will get this ack.)
-        // We do not send ack to ourselves. This node already knows it has the message.
-        // Attempt to deliver any messages that are now deliverable
-        attemptDeliver();
-    }
 
     /**
      * Handles an incoming acknowledgment for a message.
@@ -140,7 +138,7 @@ public class LamportClock implements Serializable {
      * @param ackTimestamp The Lamport timestamp at the acknowledger when sending the ack.
      */
     public synchronized void onReceiveAck(int origSenderId, int origTimestamp, int ackSenderId, int ackTimestamp) {
-        // Update Lamport clock on receiving the ack
+       
         updateLamportOnReceive(ackTimestamp);
         MessageKey key = new MessageKey(origSenderId, origTimestamp);
         // Find the message in queue, if present, and mark this ack
@@ -162,6 +160,7 @@ public class LamportClock implements Serializable {
         // Try delivering any messages that might now meet the conditions
         attemptDeliver();
     }
+   
 
     /**
      * Attempts to deliver messages from the head of the queue if they satisfy 
