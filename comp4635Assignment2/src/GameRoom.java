@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Random;
 
 public class GameRoom {
     private int gameId;
@@ -18,6 +19,9 @@ public class GameRoom {
     private Map<String, ClientCallback> playerCallbacks;
     private Map<String, Boolean> activePlayers; // player name
     private Map<String, FailureDetector> failureDetector;
+    private Map<String, Integer> playerID;
+    private Map<String, LamportClock> playerClocks; // player name and clock
+    private LamportClock lamportClock;
     private int currentTurnIndex = 0;
     private Mutiplayer_Puzzle puzzleServer;
 
@@ -29,6 +33,8 @@ public class GameRoom {
         this.isRun = false;
         this.isFinished = false;
         this.host = host;
+        this.playerID = new HashMap<>();
+        this.playerClocks = new HashMap<>();
         this.players = new ArrayList<>();
         this.playerCallbacks = new HashMap<>();
         this.activePlayers = new HashMap<>();
@@ -37,10 +43,20 @@ public class GameRoom {
     }
 
     public boolean addPlayer(String playerName, ClientCallback callback) {
+        Random rand = new Random();
         if (players.size() < numPlayers) {
             Player player = new Player(playerName);
             players.add(player);
             playerCallbacks.put(playerName, callback);
+
+            int id = rand.nextInt(100);
+            playerID.put(playerName, id);
+            playerClocks.put(playerName, new LamportClock(id)); // player's size is the id
+            // set peers
+            List<LamportClock> allClocks = new ArrayList<>(playerClocks.values());
+            for (LamportClock c : allClocks) {
+                c.setPeers(allClocks);
+            }
             return true;
         }
         return false;
@@ -214,7 +230,16 @@ public class GameRoom {
                     if ("ERROR".equals(playerInput) || "NO_INPUT".equals(playerInput)) {
                         broadcastMessage(currentPlayerName + " did not enter a valid word.");
                     } else {
-                        broadcastMessage(currentPlayerName + " typed: " + playerInput);
+                        // broadcastMessage(currentPlayerName + " typed: " + playerInput);
+
+                        // Step 1: Increment Lamport clock
+                        LamportClock clock = playerClocks.get(currentPlayerName);
+                        int timestamp = clock.tick();
+
+                        // Step 2: Locally process your own message (self-delivery)
+                        clock.onReceiveMessage(timestamp, playerID.get(currentPlayerName), playerInput);
+
+                        broadcastLamportMessage(currentPlayerName, playerInput, timestamp);
 
                         if (!addedWord.contains(playerInput)) {
                             if (puzzleServer.is_guessed_word_correct(playerInput)) {
@@ -324,6 +349,29 @@ public class GameRoom {
                 callback.receiveMessage(message);
             } catch (RemoteException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void broadcastLamportMessage(String senderName, String message, int timestamp) {
+        for (Map.Entry<String, ClientCallback> entry : playerCallbacks.entrySet()) {
+            String targetPlayer = entry.getKey();
+            ClientCallback targetCallback = entry.getValue();
+
+            // Skip sending back to the sender
+            if (!targetPlayer.equals(senderName)) {
+                try {
+                    // Visual feedback to target client
+                    targetCallback.receiveMessage("[Lamport Msg] " + message +
+                            " (TS=" + timestamp + ", From=" + senderName + ")");
+
+                    // Deliver to their LamportClock on server side
+                    LamportClock receiverClock = playerClocks.get(targetPlayer);
+                    receiverClock.onReceiveMessage(timestamp, playerID.get(senderName), message);
+
+                } catch (RemoteException e) {
+                    System.out.println("Could not send Lamport message to " + targetPlayer + ": " + e.getMessage());
+                }
             }
         }
     }
