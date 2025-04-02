@@ -190,7 +190,15 @@ public class Multiplayer {
                         .append("Host: ").append(game.getHost()).append("\n")
                         .append("Players Joined: ").append(game.getPlayerCount()).append("/")
                         .append(game.getTotalPlayers()).append("\n")
-                        .append("Waiting for ").append(game.getRemainingSpot()).append(" more players to join...\n")
+                        .append("Pending - Waiting for ").append(game.getRemainingSpot())
+                        .append(" more players to join...\n")
+                        .append("------------------------------------------\n");
+            } else if (game.isStarted() && !game.isGameFinished()) {
+                info.append("Game ID: ").append(game.getGameId()).append("\n")
+                        .append("Host: ").append(game.getHost()).append("\n")
+                        .append("Players Joined: ").append(game.getPlayerCount()).append("/")
+                        .append(game.getTotalPlayers()).append("\n")
+                        .append("Running - No more player is accepted\n")
                         .append("------------------------------------------\n");
             }
         }
