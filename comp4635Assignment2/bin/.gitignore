@@ -3,3 +3,9 @@
 /LamportClock$MessageKey.class
 /TestLamport.class
 /test.class
+/GameMessage.class
+/LamportMessageHandler.class
+/LamportMessageHandler$MessageEnvelope.class
+/LamportMessageHandler$MessageKey.class
+/LamportMessageHandler$GameMessageType.class
+/LamportMessageHandler$MessageType.class
