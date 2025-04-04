@@ -204,7 +204,7 @@ public class Multiplayer {
         }
 
         if (!hasActiveGames) {
-            info.append("No active game rooms available.\n");
+            info.append("No pending game rooms available.\n");
         }
 
         return info.toString();

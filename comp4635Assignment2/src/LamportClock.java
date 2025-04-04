@@ -83,7 +83,7 @@ public class LamportClock implements Serializable {
      * 
      * @param content The application-level content of the message.
      */
-    public synchronized void send(String content) {
+    public synchronized void send(String content, GameRoom gameRoom) {
         // Step 1: Increment Lamport clock for the send event
         int timestamp = lamportClock.incrementAndGet();
         // Create a Message for this event
@@ -98,13 +98,16 @@ public class LamportClock implements Serializable {
         updateLamportOnReceive(timestamp);
         // Broadcast the message to all other peers
         for (LamportClock peer : peers) {
-            peer.onReceiveMessage(timestamp, this.nodeId, content);
+            peer.onReceiveMessage(timestamp, this.nodeId, content, gameRoom);
         }
-        // Upon "receiving" its own message, this node will also send an ack in
-        // onReceiveMessage.
-        // Delivery check after sending (in case message had no predecessors and a
-        // single node scenario)
-        attemptDeliver();
+
+        /*
+         * Upon "receiving" its own message, this node will also send an ack in
+         * onReceiveMessage.
+         * Delivery check after sending (in case message had no predecessors and a
+         * single node scenario)
+         */
+        attemptDeliver(gameRoom);
     }
 
     /**
@@ -116,7 +119,7 @@ public class LamportClock implements Serializable {
      * @param senderId  The ID of the sender of the message.
      * @param content   The content of the message.
      */
-    public synchronized void onReceiveMessage(int timestamp, int senderId, String content) {
+    public synchronized void onReceiveMessage(int timestamp, int senderId, String content, GameRoom gameRoom) {
         updateLamportOnReceive(timestamp); // ✅ Increments Lamport clock
         // Create Message object and add to queue
         Message msg = new Message(timestamp, senderId, content);
@@ -143,9 +146,9 @@ public class LamportClock implements Serializable {
         // Ack contains this node's ID and current Lamport time.
         int ackTimestamp = lamportClock.get(); // ✅ Use updated Lamport time for ACK
         for (LamportClock peer : peers) {
-            peer.onReceiveAck(senderId, timestamp, this.nodeId, ackTimestamp); // ✅ Broadcast ACK
+            peer.onReceiveAck(senderId, timestamp, this.nodeId, ackTimestamp, gameRoom); // ✅ Broadcast ACK
         }
-        attemptDeliver(); // ✅ Try to deliver in total order
+        attemptDeliver(gameRoom); // ✅ Try to deliver in total order
     }
 
     /**
@@ -158,7 +161,8 @@ public class LamportClock implements Serializable {
      * @param ackTimestamp  The Lamport timestamp at the acknowledger when sending
      *                      the ack.
      */
-    public synchronized void onReceiveAck(int origSenderId, int origTimestamp, int ackSenderId, int ackTimestamp) {
+    public synchronized void onReceiveAck(int origSenderId, int origTimestamp, int ackSenderId, int ackTimestamp,
+            GameRoom gameRoom) {
 
         updateLamportOnReceive(ackTimestamp);
         MessageKey key = new MessageKey(origSenderId, origTimestamp);
@@ -180,14 +184,14 @@ public class LamportClock implements Serializable {
             ackBuffer.get(key).add(ackSenderId);
         }
         // Try delivering any messages that might now meet the conditions
-        attemptDeliver();
+        attemptDeliver(gameRoom);
     }
 
     /**
      * Attempts to deliver messages from the head of the queue if they satisfy
      * the FIFO and total order conditions.
      */
-    private synchronized void attemptDeliver() {
+    private synchronized void attemptDeliver(GameRoom gameRoom) {
         while (true) {
             Message head = holdBackQueue.peek();
             if (head == null) {
@@ -231,7 +235,7 @@ public class LamportClock implements Serializable {
             // If both conditions are satisfied, deliver the message
             holdBackQueue.poll(); // remove from queue
             deliveredClock.put(senderId, ts); // update delivered timestamp for FIFO tracking
-            deliverToApplication(head);
+            deliverToApplication(head, gameRoom);
             // After delivering, continue loop in case next message is now deliverable
         }
     }
@@ -240,12 +244,12 @@ public class LamportClock implements Serializable {
      * Delivers a message to the application (game state update, etc.).
      * In this implementation, we simply print the delivery as a demonstration.
      */
-    private void deliverToApplication(Message msg) {
+    private void deliverToApplication(Message msg, GameRoom gameRoom) {
         System.out.println("Node " + nodeId + " delivered message from Node "
                 + msg.senderId + " (timestamp=" + msg.timestamp + "): "
                 + msg.content);
-        // In a real system, apply msg.content to the game state or application state
-        // here.
+
+        // gameRoom.processGuess(msg.content, msg.senderId);
     }
 
     /**

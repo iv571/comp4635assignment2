@@ -157,6 +157,56 @@ public class GameRoom {
 
     }
 
+    public void submitGuess(String playerName, String word) {
+        if (puzzleServer.is_All_words_are_guessed())
+            return;
+
+        LamportClock clock = playerClocks.get(playerName);
+        if (clock != null) {
+            clock.send(word, this);
+        }
+    }
+
+    public synchronized void processGuess(String word, int senderId) {
+        List<String> addedWord = new ArrayList<>();
+        String playerName = getPlayerNameById(senderId);
+        Player currPlayer = getPlayerByName(playerName);
+        if (playerName == null)
+            return;
+
+        if (!addedWord.contains(word)) {
+            if (puzzleServer.is_guessed_word_correct(word)) {
+                addedWord.add(word);
+                currPlayer.increaseScore();
+                broadcastMessage(playerName + " guessed correctly: " + word);
+            } else {
+                currPlayer.decrementFailAttempt();
+                broadcastMessage(playerName + " guessed wrong: " + word);
+            }
+        } else {
+            currPlayer.decrementFailAttempt();
+            broadcastMessage(playerName + " guessed a duplicate: " + word);
+        }
+    }
+
+    private Player getPlayerByName(String name) {
+        for (Player player : players) {
+            if (player.getName().equals(name)) {
+                return player;
+            }
+        }
+        return null; // Not found
+    }
+
+    private String getPlayerNameById(int id) {
+        for (Map.Entry<String, Integer> entry : playerID.entrySet()) {
+            if (entry.getValue() == id) {
+                return entry.getKey(); // playerName
+            }
+        }
+        return null; // not found
+    }
+
     private String startTurns() {
         boolean singlePlayerCase = false;
         Player winner = null;
@@ -238,8 +288,7 @@ public class GameRoom {
                         LamportClock clock = playerClocks.get(currentPlayerName);
                         int timestamp = clock.tick();
 
-                        // Step 2: Locally process your own message (self-delivery)
-                        clock.onReceiveMessage(timestamp, playerID.get(currentPlayerName), playerInput);
+                        clock.send(playerInput, this);
 
                         broadcastLamportMessage(currentPlayerName, playerInput, timestamp);
                         // ==============================================================================
@@ -370,7 +419,7 @@ public class GameRoom {
 
                     // Deliver to their LamportClock on server side
                     LamportClock receiverClock = playerClocks.get(targetPlayer);
-                    receiverClock.onReceiveMessage(timestamp, playerID.get(senderName), message);
+                    receiverClock.onReceiveMessage(timestamp, playerID.get(senderName), message, this);
 
                 } catch (RemoteException e) {
                     System.out.println("Could not send Lamport message to " + targetPlayer + ": " + e.getMessage());
