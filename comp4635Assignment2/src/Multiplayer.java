@@ -17,7 +17,7 @@ public class Multiplayer {
         this.scheduler = Executors.newScheduledThreadPool(5);
     }
 
-    private int createGame(String host, int numPlayers, int gameLevel) throws RemoteException {
+    int createGame(String host, int numPlayers, int gameLevel, PeerProcess hostPeerProcess) throws RemoteException {
         if (hostGameMap.containsKey(host)) {
             throw new RemoteException("Host " + host + " has already created a game and cannot create another.");
         }
@@ -26,7 +26,7 @@ public class Multiplayer {
         }
 
         int gameId = generateGameId();
-        GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host);
+        GameRoom gameRoom = new GameRoom(gameId, numPlayers, gameLevel, host, hostPeerProcess);
         gameRooms.put(gameId, gameRoom);
         hostGameMap.put(host, gameId);
         System.out.println("Game room created: Game ID = " + gameId + " by " + host);
@@ -35,7 +35,7 @@ public class Multiplayer {
 
     public String startMultiGame(String host, int numPlayers, int gameLevel) {
         try {
-            int newGameId = createGame(host, numPlayers, gameLevel);
+            int newGameId = createGame(host, numPlayers, gameLevel, null);
             return "Multi-player game created! Game ID = " + newGameId
                     + "\nWaiting for " + (numPlayers) + " more players to join...";
         } catch (RemoteException e) {
@@ -176,6 +176,12 @@ public class Multiplayer {
         int gameId = 1000 + gameIdCounter.getAndIncrement();
         return gameId;
     }
+    
+    public GameRoom getGameRoom(int gameId) {
+        return gameRooms.get(gameId);
+    }
+    
+    
 
     public String showActiveGameRooms() {
         StringBuilder info = new StringBuilder();

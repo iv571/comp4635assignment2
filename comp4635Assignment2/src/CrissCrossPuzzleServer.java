@@ -51,4 +51,9 @@ public interface CrissCrossPuzzleServer extends Remote {
 	
 
 	public boolean isValidRoomID(int roomID) throws RemoteException;
+
+	public void updateRevealedPuzzle(String updatedView) throws RemoteException;
+	
+	// In CrissCrossPuzzleServer interface
+	public String getCurrentRevealedPuzzle() throws RemoteException;
 }

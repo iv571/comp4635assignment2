@@ -9,3 +9,13 @@
 /LamportMessageHandler$MessageKey.class
 /LamportMessageHandler$GameMessageType.class
 /LamportMessageHandler$MessageType.class
+/LamportClockImpl.class
+/PeerProcess.class
+/PeerProcess$GameState.class
+/PeerProcess$LamportClockImpl.class
+/PeerProcess$LamportClockInterface.class
+/PeerProcess$Message$Type.class
+/PeerProcess$Message.class
+/PeerProcess$ReceiverImpl$1.class
+/PeerProcess$ReceiverImpl.class
+/PeerProcess$ReceiverInterface.class

@@ -66,6 +66,9 @@ public class Client {
 		quit, // quit
 		pause, // pause heartbeat
 		resume, // resume heartbeat
+		p2pcheck,    // New: Check game play state in peer-to-peer mode
+	    p2ppropose,  // New: Propose a game to peers
+	    p2pjoin      // New: Join a peer's game
 	}
 
 	 /**
@@ -740,6 +743,28 @@ public class Client {
 					System.out.println("Heartbeat resumed.");
 				}
 				break;
+//			  case p2pcheck:
+//				  // Check and display the current game state.
+//			        doP2PCheck();
+//	                break;
+//	          case p2ppropose:
+//	                // Example implementation for proposing a game to peers.
+//	                System.out.println("Proposing a new game to peers...");
+//	                // Add logic to notify other peers about the proposed game.
+//	             // Join an existing game hosted by a peer.
+//	                if (tokens.length < 2) {
+//	                    System.out.println("Usage: p2pjoin <hostName>");
+//	                    break;
+//	                }
+//	                String hostName = tokens[1];
+//	                doP2PJoin(hostName);
+//	                break;
+//	          case p2pjoin:
+//	                // Example implementation for joining a peer's game.
+//	                System.out.println("Joining a peer's game...");
+//	                // Add logic to connect to the peer's game session.
+//	                break;
+	          
 			case quit:
 				System.out.println("Quitting...");
 				// Stop the heartbeat thread if it's running
@@ -858,6 +883,11 @@ public class Client {
 		System.out.println("|   help                                         - Display this help          |");
 		System.out.println("|   quit                                         - Exit the client            |");
 		System.out.println("|                                                                             |");
+		System.out.println("|                         PEER-TO-PEER MODE                                   |");
+		System.out.println("|   p2pcheck                                     - Check game play state      |");
+	    System.out.println("|   p2ppropose                                   - Propose a game             |");
+	    System.out.println("|   p2pjoin                                      - Join a game                |");
+		System.out.println("|                                                                             |");
 		System.out.println(border);
 	}
 
@@ -897,18 +927,36 @@ public class Client {
 	}
 
 	 /**
-     * The entry point of the client application.
-     *
-     * @param args Command line arguments; expects exactly 2 arguments.
+     * Main method.
+     * Asks the user to choose the mode. For P2P mode, a new PeerProcess is launched;
+     * otherwise, centralized mode is executed.
      */
-	public static void main(String[] args) {
-		if (args.length != 2) {
-			System.out.println(USAGE);
-			System.exit(1);
-		}
-		String serverUrl = args[0];
-		String clientname = args[1];
-		Client client = new Client(serverUrl, clientname);
-		client.run();
-	}
+    public static void main(String[] args) {
+        try {
+            BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Select mode: [1] Centralized, [2] Peer-to-Peer");
+            System.out.print("Mode (1 or 2): ");
+            String modeStr = consoleIn.readLine();
+            int mode = Integer.parseInt(modeStr.trim());
+            if (mode == 2) {
+                // P2P mode: ask for a unique peer name and launch PeerProcess
+                System.out.print("Enter a unique peer name: ");
+                String peerName = consoleIn.readLine().trim();
+                new PeerProcess(peerName);
+            } else {
+                // Centralized mode: require server URL and client name from arguments
+                if (args.length != 2) {
+                    System.out.println(USAGE);
+                    System.exit(1);
+                }
+                String serverUrl = args[0];
+                String clientName = args[1];
+                Client client = new Client(serverUrl, clientName);
+                client.run();
+            }
+        } catch (Exception e) {
+            System.err.println("Fatal error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

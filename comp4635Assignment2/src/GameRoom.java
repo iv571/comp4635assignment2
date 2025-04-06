@@ -1,3 +1,4 @@
+import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,8 +8,9 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
 
+
 public class GameRoom {
-    private int gameId;
+    int gameId;
     private int numPlayers;
     private int gameLevel;
     private boolean isStarted;
@@ -21,11 +23,18 @@ public class GameRoom {
     private Map<String, FailureDetector> failureDetector;
     private Map<String, Integer> playerID;
     private Map<String, LamportClock> playerClocks; // player name and clock
+    private List<String> guessedWords = new ArrayList<>(); // Persistent list of guessed words
     private LamportClock lamportClock;
     private int currentTurnIndex = 0;
     private Mutiplayer_Puzzle puzzleServer;
+    private CrissCrossPuzzleServer gameServer;
+    PeerProcess.Message msg;
+ // NEW: Store a reference to the actual host's PeerProcess instance
+    private PeerProcess hostPeer;
+ // Map to store node ID to player name associations
+    private Map<Integer, String> nodeIdToPlayerName = new HashMap<>();
 
-    public GameRoom(int gameId, int numPlayers, int gameLevel, String host) {
+    public GameRoom(int gameId, int numPlayers, int gameLevel, String host, PeerProcess hostPeer) {
         this.gameId = gameId;
         this.numPlayers = numPlayers;
         this.gameLevel = gameLevel;
@@ -33,16 +42,30 @@ public class GameRoom {
         this.isRun = false;
         this.isFinished = false;
         this.host = host;
+        this.hostPeer = hostPeer;
         this.playerID = new HashMap<>();
         this.playerClocks = new HashMap<>();
         this.players = new ArrayList<>();
         this.playerCallbacks = new HashMap<>();
         this.activePlayers = new HashMap<>();
         this.failureDetector = new HashMap<>();
+        
+     // Look up the GameServer and store its reference
+        try {
+            gameServer = (CrissCrossPuzzleServer) Naming.lookup("rmi://localhost:1099/GameServer");
+        } catch (Exception e) {
+            System.err.println("Error looking up GameServer: " + e.getMessage());
+        }
 
     }
+    
+    // Setter method for the host peer
+    public void setHostPeer(PeerProcess hostPeer) {
+        this.hostPeer = hostPeer;
+    }
+    
 
-    public boolean addPlayer(String playerName, ClientCallback callback) {
+    public boolean addPlayer(String playerName, ClientCallback callback) throws RemoteException {
         Random rand = new Random();
         if (players.size() < numPlayers) {
             Player player = new Player(playerName);
@@ -61,6 +84,11 @@ public class GameRoom {
             return true;
         }
         return false;
+    }
+    
+    // Method to retrieve a player's name by their node ID
+    public String getPlayerName(int nodeId) {
+        return nodeIdToPlayerName.get(nodeId);
     }
 
     public String startGame(String hostName) {
@@ -157,7 +185,11 @@ public class GameRoom {
 
     }
 
-    public void submitGuess(String playerName, String word) {
+    public void submitGuess(String playerName, String word) throws RemoteException {
+        if (puzzleServer == null) {
+            System.out.println("Game has not started yet. Cannot accept guesses.");
+            return;
+        }
         if (puzzleServer.is_All_words_are_guessed())
             return;
 
@@ -167,25 +199,71 @@ public class GameRoom {
         }
     }
 
-    public synchronized void processGuess(String word, int senderId) {
-        List<String> addedWord = new ArrayList<>();
-        String playerName = getPlayerNameById(senderId);
-        Player currPlayer = getPlayerByName(playerName);
-        if (playerName == null)
+    public synchronized void processGuess(String word, String senderName) throws RemoteException {
+    	// Check that the puzzle has been initialized.
+        if (puzzleServer == null) {
+            System.err.println("Puzzle server is not initialized yet. Ignoring guess: " + word);
             return;
-
-        if (!addedWord.contains(word)) {
+        }
+        
+        Player currPlayer = getPlayerByName(senderName);
+        if (currPlayer == null) {
+            System.err.println("Player not found: " + senderName);
+            return; // Player not found
+        }
+        
+        if (!guessedWords.contains(word)) {
             if (puzzleServer.is_guessed_word_correct(word)) {
-                addedWord.add(word);
+                System.out.println("Guess correct: " + word);
+                guessedWords.add(word);
                 currPlayer.increaseScore();
-                broadcastMessage(playerName + " guessed correctly: " + word);
+                broadcastMessage(senderName + " guessed correctly: " + word);
+                
+                String updatedView = puzzleServer.render_player_view_puzzle();
+                PeerProcess.Message puzzleMsg = new PeerProcess.Message(PeerProcess.Message.Type.PUZZLE, updatedView);
+                puzzleMsg.senderName = host;
+                puzzleMsg.senderId = 1; // Host’s Lamport ID
+                try {
+                    int ts = hostPeer.lamportClock.tick();
+                    puzzleMsg.timestamp = ts;
+                } catch (Exception e) {
+                    puzzleMsg.timestamp = new Random().nextInt(1000);
+                }
+                if (hostPeer != null) {
+                    hostPeer.broadcastMessageToAll(puzzleMsg);
+                } else {
+                    System.err.println("hostPeer is null. Cannot broadcast puzzle update.");
+                }
+                
+                if (gameServer != null) {
+                    gameServer.updateRevealedPuzzle(updatedView);
+                } else {
+                    System.err.println("GameServer reference is null.");
+                }
+                
+                if (puzzleServer.is_All_words_are_guessed()) {
+                    broadcastMessage("Game over! Puzzle solved.");
+                    isFinished = true;
+                }
             } else {
+                System.out.println("Guess incorrect: " + word);
                 currPlayer.decrementFailAttempt();
-                broadcastMessage(playerName + " guessed wrong: " + word);
+                broadcastMessage(senderName + " guessed wrong: " + word);
             }
         } else {
             currPlayer.decrementFailAttempt();
-            broadcastMessage(playerName + " guessed a duplicate: " + word);
+            broadcastMessage(senderName + " guessed a duplicate: " + word);
+        }
+    }
+    
+    
+    // Helper method to broadcast messages via PeerProcess
+    private void broadcastMessageToAll(PeerProcess.Message message) {
+        try {
+            PeerProcess peer = new PeerProcess(host); // This assumes host can access its own PeerProcess instance
+            peer.broadcastMessageToAll(message);
+        } catch (RemoteException e) {
+            System.err.println("Broadcast failed: " + e.getMessage());
         }
     }
 
@@ -390,21 +468,22 @@ public class GameRoom {
     }
 
     public void broadcastMessage(String message) {
-        for (Map.Entry<String, ClientCallback> entry : playerCallbacks.entrySet()) {
-            String playerName = entry.getKey();
-            ClientCallback callback = entry.getValue();
-            if (callback == null) {
-                System.err.println("Callback for player " + playerName + " is null.");
-                continue;
-            }
+        if (hostPeer != null) {
+            PeerProcess.Message msg = new PeerProcess.Message(PeerProcess.Message.Type.TEXT, message);
+            msg.senderName = host;
+            msg.senderId = 1;
             try {
-                callback.receiveMessage(message);
+                int ts = hostPeer.lamportClock.tick();
+                msg.timestamp = ts;
             } catch (RemoteException e) {
-                e.printStackTrace();
+                msg.timestamp = new Random().nextInt(1000);
             }
+            hostPeer.broadcastMessageToAll(msg);
+        } else {
+            System.err.println("hostPeer is null. Cannot broadcast message.");
         }
     }
-
+    
     private void broadcastLamportMessage(String senderName, String message, int timestamp) {
         for (Map.Entry<String, ClientCallback> entry : playerCallbacks.entrySet()) {
             String targetPlayer = entry.getKey();
@@ -494,6 +573,12 @@ public class GameRoom {
     private synchronized boolean removePlayer(String playerName) {
         return players.removeIf(player -> player.getName().equals(playerName));
     }
+    
+    public void initializePuzzle(WordRepositoryServer wordServer) {
+        if (puzzleServer == null) {
+            puzzleServer = new Mutiplayer_Puzzle(players.size(), gameLevel + players.size(), wordServer);
+        }
+    }
 
     public boolean isStarted() {
         return this.isStarted;
@@ -525,6 +610,11 @@ public class GameRoom {
 
     public int getTotalPlayers() {
         return this.numPlayers;
+    }
+    
+    // Getter for puzzleServer (optional, depending on access needs)
+    public Mutiplayer_Puzzle getPuzzleServer() {
+        return puzzleServer;
     }
 
     private static class Player {

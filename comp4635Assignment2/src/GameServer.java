@@ -9,6 +9,7 @@ public class GameServer {
     private static final String USAGE = "java GameServer <rmi_url>";
     private static final String HOST = "localhost";
     private static final int REGISTRY_PORT = 1099;
+   
 
     public GameServer(String name) {
         try {
@@ -54,6 +55,8 @@ public class GameServer {
             e.printStackTrace();
         }
     }
+    
+
 
     public static void main(String[] args) {
         if (args.length > 1 || (args.length > 0 && args[0].equalsIgnoreCase("-h"))) {

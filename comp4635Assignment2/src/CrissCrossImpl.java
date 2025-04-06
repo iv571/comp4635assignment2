@@ -48,7 +48,9 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
     private Map<String, Integer> lastSeenSeq = new ConcurrentHashMap<>();
     private Map<String, Object> lastResponse = new ConcurrentHashMap<>();
     
-   
+    private String currentRevealedPuzzle = "";
+    
+    
     public CrissCrossImpl(String bankName) throws RemoteException {
         super();
         loadConfigAndInitializeFailureDetector();
@@ -952,7 +954,24 @@ public class CrissCrossImpl extends UnicastRemoteObject implements CrissCrossPuz
         removeSession(clientName);
         System.out.println("Released game state for " + clientName);
     }
-
+    
+    @Override
+    public void updateRevealedPuzzle(String updatedView) throws RemoteException {
+        // Update the persistent copy of the revealed puzzle.
+        currentRevealedPuzzle = updatedView;
+        // Print the updated puzzle to the server console.
+        System.out.println("=== Updated Revealed Puzzle on Server ===");
+        System.out.println(currentRevealedPuzzle);
+    }
+    
+ // In CrissCrossImpl
+    @Override
+    public String getCurrentRevealedPuzzle() throws RemoteException {
+        if (currentRevealedPuzzle == null) {
+            return "No puzzle state available.";
+        }
+        return currentRevealedPuzzle;
+    }
 	
     /**
      * Checks if a room ID is valid within the multiplayer manager.

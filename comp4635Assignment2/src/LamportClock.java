@@ -1,4 +1,6 @@
 import java.io.Serializable;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -7,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * LamportBroadcastNode implements a Lamport Clock based broadcast algorithm
  * ensuring FIFO-total order of message delivery in a distributed system.
  */
-public class LamportClock implements Serializable {
+public class LamportClock extends UnicastRemoteObject implements LamportClockImpl, Serializable {
     private final int nodeId; // Unique ID of this node
     private final AtomicInteger lamportClock; // Lamport logical clock (thread-safe)
     private final PriorityBlockingQueue<Message> holdBackQueue; // Priority queue for messages
@@ -22,7 +24,7 @@ public class LamportClock implements Serializable {
      * 
      * @param nodeId Unique identifier for this node.
      */
-    public LamportClock(int nodeId) {
+    public LamportClock(int nodeId) throws RemoteException {
         this.timestamp = new AtomicInteger(0);
         this.nodeId = nodeId;
         this.lamportClock = new AtomicInteger(0);
@@ -38,7 +40,7 @@ public class LamportClock implements Serializable {
      * 
      * @return The new timestamp.
      */
-    public synchronized int tick() {
+    public synchronized int tick() throws RemoteException {
         return timestamp.incrementAndGet();
     }
 
@@ -49,7 +51,7 @@ public class LamportClock implements Serializable {
      * @param receivedTimestamp The timestamp received in a message.
      * @return The updated timestamp.
      */
-    public synchronized int update(int receivedTimestamp) {
+    public synchronized int update(int receivedTimestamp) throws RemoteException {
         timestamp.set(Math.max(timestamp.get(), receivedTimestamp) + 1);
         return timestamp.get();
     }
@@ -59,7 +61,7 @@ public class LamportClock implements Serializable {
      * 
      * @return The current logical clock value.
      */
-    public synchronized int getTime() {
+    public synchronized int getTime() throws RemoteException {
         return timestamp.get();
     }
 
@@ -83,7 +85,7 @@ public class LamportClock implements Serializable {
      * 
      * @param content The application-level content of the message.
      */
-    public synchronized void send(String content, GameRoom gameRoom) {
+    public synchronized void send(String content, GameRoom gameRoom) throws RemoteException {
         // Step 1: Increment Lamport clock for the send event
         int timestamp = lamportClock.incrementAndGet();
         // Create a Message for this event
@@ -248,8 +250,15 @@ public class LamportClock implements Serializable {
         System.out.println("Node " + nodeId + " delivered message from Node "
                 + msg.senderId + " (timestamp=" + msg.timestamp + "): "
                 + msg.content);
+        
+        String playerName = gameRoom.getPlayerName(msg.senderId);
 
-        // gameRoom.processGuess(msg.content, msg.senderId);
+        try {
+			gameRoom.processGuess(msg.content, playerName);
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     /**
