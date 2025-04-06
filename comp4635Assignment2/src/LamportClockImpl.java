@@ -8,4 +8,5 @@ public interface LamportClockImpl extends Remote {
     // Optionally, include other methods that should be remotely accessible.
     // For example, if you need to broadcast a message:
     void send(String content, GameRoom gameRoom) throws RemoteException;
+	int getId() throws RemoteException;
 }

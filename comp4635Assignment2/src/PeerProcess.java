@@ -691,7 +691,7 @@ public class PeerProcess {
         // Create and prepare the GUESS message
         Message guessMsg = new Message(Message.Type.GUESS, guessContent);
         guessMsg.senderName = peerName;
-        guessMsg.senderId = ((LamportClockImpl) lamportClock).getId();
+        guessMsg.senderId = lamportClock.getId();
         try {
             int ts = lamportClock.tick();             // Lamport: increment for the guess event
             guessMsg.timestamp = ts;
@@ -782,7 +782,7 @@ public class PeerProcess {
         System.out.println("Current puzzle: " + localPuzzleState);
     }
 
-    
+  
     /** Main method to launch the peer process. Accepts an optional argument for peer name; otherwise prompts for it. */
     public static void main(String[] args) {
         try {

@@ -200,47 +200,44 @@ public class GameRoom {
     }
 
     public synchronized void processGuess(String word, String senderName) throws RemoteException {
-    	// Check that the puzzle has been initialized.
         if (puzzleServer == null) {
             System.err.println("Puzzle server is not initialized yet. Ignoring guess: " + word);
             return;
         }
-        
         Player currPlayer = getPlayerByName(senderName);
         if (currPlayer == null) {
             System.err.println("Player not found: " + senderName);
-            return; // Player not found
+            return;
         }
-        
         if (!guessedWords.contains(word)) {
             if (puzzleServer.is_guessed_word_correct(word)) {
                 System.out.println("Guess correct: " + word);
                 guessedWords.add(word);
                 currPlayer.increaseScore();
+                // Broadcast a TEXT message announcing the correct guess
                 broadcastMessage(senderName + " guessed correctly: " + word);
-                
+                // Prepare and broadcast updated puzzle state
                 String updatedView = puzzleServer.render_player_view_puzzle();
                 PeerProcess.Message puzzleMsg = new PeerProcess.Message(PeerProcess.Message.Type.PUZZLE, updatedView);
-                puzzleMsg.senderName = host;
-                puzzleMsg.senderId = 1; // Host’s Lamport ID
-                try {
-                    int ts = hostPeer.lamportClock.tick();
-                    puzzleMsg.timestamp = ts;
-                } catch (Exception e) {
-                    puzzleMsg.timestamp = new Random().nextInt(1000);
-                }
+                // **MODIFIED:** Use local peer's identity for the message
                 if (hostPeer != null) {
+                    puzzleMsg.senderName = senderName;  // label with the guesser's name (origin)
+                    puzzleMsg.senderId = hostPeer.lamportClock.getId();
+                    try {
+                        int ts = hostPeer.lamportClock.tick();
+                        puzzleMsg.timestamp = ts;
+                    } catch (Exception e) {
+                        puzzleMsg.timestamp = new Random().nextInt(1000);
+                    }
                     hostPeer.broadcastMessageToAll(puzzleMsg);
                 } else {
-                    System.err.println("hostPeer is null. Cannot broadcast puzzle update.");
+                    // No hostPeer (probably processing a peer guess on a non-origin node), so skip broadcast
+                    System.out.println(">> Puzzle state updated locally for guess '" + word + "' (no broadcast).");
                 }
-                
+                // Update central server puzzle state if applicable
                 if (gameServer != null) {
                     gameServer.updateRevealedPuzzle(updatedView);
-                } else {
-                    System.err.println("GameServer reference is null.");
                 }
-                
                 if (puzzleServer.is_All_words_are_guessed()) {
                     broadcastMessage("Game over! Puzzle solved.");
                     isFinished = true;
@@ -251,6 +248,7 @@ public class GameRoom {
                 broadcastMessage(senderName + " guessed wrong: " + word);
             }
         } else {
+            // Word was already guessed
             currPlayer.decrementFailAttempt();
             broadcastMessage(senderName + " guessed a duplicate: " + word);
         }
@@ -470,8 +468,14 @@ public class GameRoom {
     public void broadcastMessage(String message) {
         if (hostPeer != null) {
             PeerProcess.Message msg = new PeerProcess.Message(PeerProcess.Message.Type.TEXT, message);
-            msg.senderName = host;
-            msg.senderId = 1;
+            // **MODIFIED:** Use local peer’s Lamport clock ID for the sender
+            msg.senderName = "<" + host + ">";  // (Optional: can use host name or local peer name for display)
+            try {
+            	msg.senderId = hostPeer.lamportClock.getId();
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             try {
                 int ts = hostPeer.lamportClock.tick();
                 msg.timestamp = ts;
@@ -480,7 +484,7 @@ public class GameRoom {
             }
             hostPeer.broadcastMessageToAll(msg);
         } else {
-            System.err.println("hostPeer is null. Cannot broadcast message.");
+            System.err.println("hostPeer is null. Cannot broadcast message: " + message);
         }
     }
     
@@ -616,6 +620,11 @@ public class GameRoom {
     public Mutiplayer_Puzzle getPuzzleServer() {
         return puzzleServer;
     }
+    
+    public PeerProcess getHostPeer() {
+        return hostPeer;
+    }
+    
 
     private static class Player {
         private String name;

@@ -346,6 +346,11 @@ public class LamportClock extends UnicastRemoteObject implements LamportClockImp
             return Integer.compare(this.senderId, other.senderId);
         }
     }
+    
+    @Override
+    public synchronized int getId() throws RemoteException {
+        return nodeId;
+    }
 
     /**
      * MessageKey is used as a lookup key for messages using (senderId, timestamp).
